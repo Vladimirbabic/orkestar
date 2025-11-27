@@ -55,7 +55,9 @@ const modelStyles: Record<AIModel, { icon: string; indicator: string; glow: stri
 
 const allModels: AIModel[] = ['openai', 'gemini', 'stable-diffusion', 'elevenlabs', 'custom', 'supadata'];
 
-type AINodeProps = NodeProps<NodeData>;
+interface AINodeProps extends Omit<NodeProps<NodeData>, 'data'> {
+  data: NodeData;
+}
 
 const AINode = ({ data, selected, id }: AINodeProps) => {
   const updateNodeData = useWorkflowStore((state) => state.updateNodeData);
