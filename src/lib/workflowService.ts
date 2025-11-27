@@ -1,11 +1,12 @@
 import { Node, Edge } from '@xyflow/react';
+import { NodeData, ResultNodeData } from '@/store/workflowStore';
 import { getCurrentUserIdSync } from './supabase';
 
 export interface Workflow {
   id: string;
   name: string;
   description?: string;
-  nodes: Node[];
+  nodes: Node<NodeData | ResultNodeData>[];
   edges: Edge[];
   created_at: string;
   updated_at: string;
@@ -38,7 +39,7 @@ export async function listWorkflows(): Promise<Workflow[]> {
 // Save a workflow
 export async function saveWorkflow(
   name: string,
-  nodes: Node[],
+  nodes: Node<NodeData | ResultNodeData>[],
   edges: Edge[],
   description?: string,
   id?: string
