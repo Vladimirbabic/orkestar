@@ -55,7 +55,17 @@ export default function NodeDetails() {
 
   if (!selectedNode) return null;
 
+  // Only show details for AI nodes, not result nodes
+  if (selectedNode.type !== 'aiNode') return null;
+
   const { data } = selectedNode;
+  
+  // Type guard to ensure data.model is a valid AIModel
+  if (!('model' in data) || typeof data.model !== 'string') {
+    return null;
+  }
+  
+  const model = data.model as AIModel;
 
   const handleUpdate = (field: string, value: string | number) => {
     updateNodeData(selectedNode.id, { [field]: value });
@@ -140,7 +150,7 @@ export default function NodeDetails() {
         </div>
 
         {/* System Prompt */}
-        {data.model !== 'stable-diffusion' && (
+        {model !== 'stable-diffusion' && (
           <div className="space-y-2">
             <label className="flex items-center gap-2 text-xs font-medium text-zinc-400">
               <Settings className="w-3.5 h-3.5" />
@@ -157,7 +167,7 @@ export default function NodeDetails() {
         )}
 
         {/* Temperature */}
-        {data.model !== 'stable-diffusion' && (
+        {model !== 'stable-diffusion' && (
           <div className="space-y-3">
             <label className="flex items-center justify-between text-xs font-medium text-zinc-400">
               <span className="flex items-center gap-2">
@@ -189,7 +199,7 @@ export default function NodeDetails() {
             AI Model
           </label>
           <select
-            value={data.model}
+            value={model}
             onChange={(e) => handleUpdate('model', e.target.value)}
             className="w-full bg-zinc-900 border border-zinc-800 rounded-md px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-700 focus:border-transparent transition-all appearance-none cursor-pointer"
           >
