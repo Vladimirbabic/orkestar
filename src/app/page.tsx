@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { listWorkflows, deleteWorkflow, type Workflow } from '@/lib/workflowService';
-import { Plus, Workflow, Trash2, Edit, Calendar, FileText } from 'lucide-react';
+import { Plus, Workflow as WorkflowIcon, Trash2, Edit, Calendar, FileText } from 'lucide-react';
 
 export default function WorkflowsPage() {
   const router = useRouter();
