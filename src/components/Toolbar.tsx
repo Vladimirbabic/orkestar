@@ -44,12 +44,11 @@ export default function Toolbar() {
     updateCount();
     
     // Subscribe to store changes to update count when keys change
-    const unsubscribe = useSettingsStore.subscribe(
-      (state) => state.apiKeys,
-      updateCount
-    );
+    const unsubscribe = useSettingsStore.subscribe((state) => {
+      updateCount();
+    });
     
-    return () => unsubscribe();
+    return unsubscribe;
   }, [getEnabledModels]);
 
   // Load workflows when dropdown opens
