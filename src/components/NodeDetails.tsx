@@ -65,7 +65,11 @@ export default function NodeDetails() {
     return null;
   }
   
-  const model = data.model as AIModel;
+  // Ensure model is a valid AIModel
+  const model: AIModel = data.model as AIModel;
+  if (!['openai', 'gemini', 'stable-diffusion', 'elevenlabs', 'custom', 'supadata'].includes(model)) {
+    return null;
+  }
 
   const handleUpdate = (field: string, value: string | number) => {
     updateNodeData(selectedNode.id, { [field]: value });
