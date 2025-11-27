@@ -55,8 +55,10 @@ const modelStyles: Record<AIModel, { icon: string; indicator: string; glow: stri
 
 const allModels: AIModel[] = ['openai', 'gemini', 'stable-diffusion', 'elevenlabs', 'custom', 'supadata'];
 
-interface AINodeProps extends Omit<NodeProps<NodeData>, 'data'> {
+interface AINodeProps {
+  id: string;
   data: NodeData;
+  selected?: boolean;
 }
 
 const AINode = ({ data, selected, id }: AINodeProps) => {
