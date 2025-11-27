@@ -3,15 +3,43 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   /* Performance optimizations */
   reactStrictMode: true,
-  swcMinify: true,
+  // swcMinify is now default in Next.js 16, no need to specify
   
   /* Image optimization */
   images: {
-    domains: [
-      'oaidalleapiprodscus.blob.core.windows.net',
-      'fal.media',
-      'cdn.openai.com',
-      'generativelanguage.googleapis.com',
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'oaidalleapiprodscus.blob.core.windows.net',
+      },
+      {
+        protocol: 'https',
+        hostname: 'fal.media',
+      },
+      {
+        protocol: 'https',
+        hostname: 'cdn.openai.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'generativelanguage.googleapis.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.blob.core.windows.net',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.azure.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.s3.amazonaws.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.cloudfront.net',
+      },
     ],
     formats: ['image/avif', 'image/webp'],
   },
