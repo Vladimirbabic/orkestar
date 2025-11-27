@@ -124,7 +124,7 @@ export default function NodeDetails() {
           </label>
           <input
             type="text"
-            value={data.description || ''}
+            value={(data.description as string | undefined) || ''}
             onChange={(e) => handleUpdate('description', e.target.value)}
             placeholder="Describe what this step does..."
             className="w-full bg-zinc-900 border border-zinc-800 rounded-md px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-700 focus:border-transparent transition-all"
@@ -138,7 +138,7 @@ export default function NodeDetails() {
             Prompt Template
           </label>
           <textarea
-            value={data.prompt || ''}
+            value={(data.prompt as string | undefined) || ''}
             onChange={(e) => handleUpdate('prompt', e.target.value)}
             placeholder="Use {{input}} to reference data from connected nodes..."
             rows={4}
@@ -157,7 +157,7 @@ export default function NodeDetails() {
               System Prompt
             </label>
             <textarea
-              value={data.systemPrompt || ''}
+              value={(data.systemPrompt as string | undefined) || ''}
               onChange={(e) => handleUpdate('systemPrompt', e.target.value)}
               placeholder="Set the AI's behavior and context..."
               rows={3}
@@ -174,14 +174,14 @@ export default function NodeDetails() {
                 <Sliders className="w-3.5 h-3.5" />
                 Temperature
               </span>
-              <span className="text-zinc-300 tabular-nums">{data.temperature ?? 0.7}</span>
+              <span className="text-zinc-300 tabular-nums">{(data.temperature as number | undefined) ?? 0.7}</span>
             </label>
             <input
               type="range"
               min="0"
               max="2"
               step="0.1"
-              value={data.temperature ?? 0.7}
+              value={(data.temperature as number | undefined) ?? 0.7}
               onChange={(e) => handleUpdate('temperature', parseFloat(e.target.value))}
               className="w-full h-1.5 bg-zinc-800 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-zinc-100 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:hover:scale-110"
             />
@@ -219,7 +219,7 @@ export default function NodeDetails() {
               Output Preview
             </label>
             <div className="p-3 bg-zinc-900 border border-zinc-800 rounded-md">
-              <p className="text-xs text-zinc-400 font-mono line-clamp-4">{data.output}</p>
+              <p className="text-xs text-zinc-400 font-mono line-clamp-4">{data.output as string}</p>
             </div>
           </div>
         )}
