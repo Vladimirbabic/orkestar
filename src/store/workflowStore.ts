@@ -20,7 +20,7 @@ export type ElevenLabsModel = 'eleven_multilingual_v2' | 'eleven_turbo_v2_5' | '
 
 export type SubModel = OpenAIModel | GeminiModel | ElevenLabsModel | string;
 
-export interface NodeData extends Record<string, unknown> {
+export interface NodeData {
   label: string;
   model: AIModel;
   subModel?: SubModel; // Specific model variant
@@ -34,13 +34,15 @@ export interface NodeData extends Record<string, unknown> {
   output?: string;
   contextId?: string; // Selected context template ID
   voiceId?: string; // ElevenLabs voice ID
+  [key: string]: unknown; // Index signature for compatibility
 }
 
-export interface ResultNodeData extends Record<string, unknown> {
+export interface ResultNodeData {
   label: string;
   result?: string;
   isLoading?: boolean;
   timestamp?: string;
+  [key: string]: unknown; // Index signature for compatibility
 }
 
 interface WorkflowState {
