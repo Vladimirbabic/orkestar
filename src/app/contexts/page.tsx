@@ -216,7 +216,7 @@ export default function ContextsPage() {
                           System Prompt
                         </span>
                       )}
-                      {context.temperature !== null && (
+                      {context.temperature !== null && context.temperature !== undefined && (
                         <span className="px-2 py-0.5 bg-zinc-800 rounded text-zinc-400">
                           Temp: {context.temperature.toFixed(1)}
                         </span>
