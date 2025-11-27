@@ -419,7 +419,8 @@ const AINode = ({ data, selected, id }: AINodeProps) => {
             className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-zinc-600 focus:border-zinc-600"
             onClick={(e) => {
               e.stopPropagation();
-              loadVoices();
+              const abortController = new AbortController();
+              loadVoices(abortController.signal);
             }}
           >
             <option value="">Select a voice...</option>
