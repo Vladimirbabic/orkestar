@@ -13,8 +13,10 @@ export interface ResultNodeData {
   timestamp?: string;
 }
 
-interface ResultNodeProps extends NodeProps {
+interface ResultNodeProps {
+  id: string;
   data: ResultNodeData;
+  selected?: boolean;
 }
 
 const ResultNode = ({ data, selected, id }: ResultNodeProps) => {
