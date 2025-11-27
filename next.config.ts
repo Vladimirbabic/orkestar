@@ -3,7 +3,6 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   /* Performance optimizations */
   reactStrictMode: true,
-  // swcMinify is now default in Next.js 16, no need to specify
   
   /* Image optimization */
   images: {
