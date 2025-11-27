@@ -74,12 +74,12 @@ export default function NodeDetails() {
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-zinc-800">
         <div className="flex items-center gap-3">
-          <div className={`${modelIconColors[data.model as AIModel]}`}>
-            {modelIcons[data.model]}
+          <div className={`${modelIconColors[model]}`}>
+            {modelIcons[model]}
           </div>
           <div>
             <h2 className="text-sm font-medium text-zinc-100">{data.label}</h2>
-            <p className="text-xs text-zinc-500">{modelLabels[data.model]}</p>
+            <p className="text-xs text-zinc-500">{modelLabels[model]}</p>
           </div>
         </div>
         <button
