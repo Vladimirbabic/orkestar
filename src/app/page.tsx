@@ -68,7 +68,7 @@ export default function WorkflowsPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-zinc-800 flex items-center justify-center">
-                <Workflow className="w-5 h-5 text-zinc-300" />
+                <WorkflowIcon className="w-5 h-5 text-zinc-300" />
               </div>
               <div>
                 <h1 className="text-xl font-semibold text-zinc-100">Workflows</h1>
@@ -107,7 +107,7 @@ export default function WorkflowsPage() {
         ) : workflows.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20">
             <div className="w-16 h-16 rounded-full bg-zinc-800 flex items-center justify-center mb-4">
-              <Workflow className="w-8 h-8 text-zinc-500" />
+              <WorkflowIcon className="w-8 h-8 text-zinc-500" />
             </div>
             <h3 className="text-lg font-medium text-zinc-200 mb-2">No workflows yet</h3>
             <p className="text-sm text-zinc-500 mb-6 text-center max-w-md">
@@ -158,7 +158,7 @@ export default function WorkflowsPage() {
                     <span>Updated {formatDate(workflow.updated_at)}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <Workflow className="w-3.5 h-3.5" />
+                    <WorkflowIcon className="w-3.5 h-3.5" />
                     <span>{workflow.nodes?.length || 0} nodes</span>
                   </div>
                 </div>
