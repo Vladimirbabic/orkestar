@@ -13,13 +13,8 @@ export interface ResultNodeData {
   timestamp?: string;
 }
 
-interface ResultNodeProps {
-  id: string;
-  data: ResultNodeData;
-  selected?: boolean;
-}
-
-const ResultNode = ({ data, selected, id }: ResultNodeProps) => {
+const ResultNode = ({ data, selected, id, ...props }: NodeProps) => {
+  const nodeData = data as unknown as ResultNodeData;
   const [copied, setCopied] = useState(false);
   const duplicateNode = useWorkflowStore((state) => state.duplicateNode);
 
@@ -263,8 +258,8 @@ const ResultNode = ({ data, selected, id }: ResultNodeProps) => {
 
   // Memoize expensive extraction
   const displayResult = useMemo(
-    () => data.result ? extractResponseContent(data.result) : '',
-    [data.result]
+    () => nodeData.result ? extractResponseContent(nodeData.result) : '',
+    [nodeData.result]
   );
 
   // Cleanup timeout on unmount
@@ -331,7 +326,7 @@ const ResultNode = ({ data, selected, id }: ResultNodeProps) => {
             <FileOutput className="w-4 h-4 text-emerald-500" />
           </div>
           <div>
-            <h3 className="text-sm font-medium text-zinc-200">{data.label || 'Result'}</h3>
+            <h3 className="text-sm font-medium text-zinc-200">{nodeData.label || 'Result'}</h3>
             <p className="text-[10px] text-zinc-500 uppercase tracking-wide">Output / Pass-through</p>
           </div>
         </div>
@@ -374,7 +369,7 @@ const ResultNode = ({ data, selected, id }: ResultNodeProps) => {
 
       {/* Result Content */}
       <div className="px-3 py-3 min-h-[100px] max-h-[200px] overflow-y-auto">
-        {data.isLoading ? (
+        {nodeData.isLoading ? (
           <div className="flex items-center justify-center h-[80px]">
             <div className="flex flex-col items-center gap-2">
               <Loader2 className="w-5 h-5 text-emerald-500 animate-spin" />
@@ -478,8 +473,8 @@ const ResultNode = ({ data, selected, id }: ResultNodeProps) => {
               <span>Can chain</span>
             </span>
           )}
-          {data.timestamp && (
-            <span>{data.timestamp}</span>
+          {nodeData.timestamp && (
+            <span>{nodeData.timestamp}</span>
           )}
         </div>
       </div>

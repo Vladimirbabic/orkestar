@@ -55,13 +55,8 @@ const modelStyles: Record<AIModel, { icon: string; indicator: string; glow: stri
 
 const allModels: AIModel[] = ['openai', 'gemini', 'stable-diffusion', 'elevenlabs', 'custom', 'supadata'];
 
-interface AINodeProps {
-  id: string;
-  data: NodeData;
-  selected?: boolean;
-}
-
-const AINode = ({ data, selected, id }: AINodeProps) => {
+const AINode = ({ data, selected, id, ...props }: NodeProps) => {
+  const nodeData = data as unknown as NodeData;
   const updateNodeData = useWorkflowStore((state) => state.updateNodeData);
   const duplicateNode = useWorkflowStore((state) => state.duplicateNode);
   const { runSingleNode, isRunning: isWorkflowRunning } = useWorkflowRunnerContext();
@@ -69,9 +64,9 @@ const AINode = ({ data, selected, id }: AINodeProps) => {
   const [isProviderDropdownOpen, setIsProviderDropdownOpen] = useState(false);
   const [isSubModelDropdownOpen, setIsSubModelDropdownOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [localPrompt, setLocalPrompt] = useState(data.prompt || '');
-  const [localSystemPrompt, setLocalSystemPrompt] = useState(data.systemPrompt || '');
-  const [localTemperature, setLocalTemperature] = useState(data.temperature || 0.7);
+  const [localPrompt, setLocalPrompt] = useState(nodeData.prompt || '');
+  const [localSystemPrompt, setLocalSystemPrompt] = useState(nodeData.systemPrompt || '');
+  const [localTemperature, setLocalTemperature] = useState(nodeData.temperature || 0.7);
   const [contexts, setContexts] = useState<Context[]>([]);
   const [isLoadingContexts, setIsLoadingContexts] = useState(false);
   const [voices, setVoices] = useState<Array<{ voice_id: string; name: string }>>([]);
@@ -81,29 +76,29 @@ const AINode = ({ data, selected, id }: AINodeProps) => {
   const settingsRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const styles = modelStyles[data.model];
-  const currentSubModel = data.subModel || getDefaultSubModel(data.model);
-  const variants = modelVariants[data.model] || [];
+  const styles = modelStyles[nodeData.model];
+  const currentSubModel = nodeData.subModel || getDefaultSubModel(nodeData.model);
+  const variants = modelVariants[nodeData.model] || [];
   
   // Check if this node has incoming connections
   const hasIncomingConnection = edges.some((edge) => edge.target === id);
 
   // Sync local state with data
   useEffect(() => {
-    setLocalPrompt(data.prompt || '');
-  }, [data.prompt]);
+    setLocalPrompt(nodeData.prompt || '');
+  }, [nodeData.prompt]);
 
   useEffect(() => {
-    setLocalSystemPrompt(data.systemPrompt || '');
-  }, [data.systemPrompt]);
+    setLocalSystemPrompt(nodeData.systemPrompt || '');
+  }, [nodeData.systemPrompt]);
 
   useEffect(() => {
-    setLocalTemperature(data.temperature || 0.7);
-  }, [data.temperature]);
+    setLocalTemperature(nodeData.temperature || 0.7);
+  }, [nodeData.temperature]);
 
   // Load contexts when component mounts if contextId is set
   useEffect(() => {
-    if (data.contextId && contexts.length === 0) {
+    if (nodeData.contextId && contexts.length === 0) {
       const abortController = new AbortController();
       let isCancelled = false;
       
@@ -125,11 +120,11 @@ const AINode = ({ data, selected, id }: AINodeProps) => {
       };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data.contextId]);
+  }, [nodeData.contextId]);
 
   // Load voices for ElevenLabs with cleanup
   const loadVoices = useCallback(async (abortSignal: AbortSignal) => {
-    if (data.model === 'elevenlabs' && voices.length === 0 && !isLoadingVoices) {
+    if (nodeData.model === 'elevenlabs' && voices.length === 0 && !isLoadingVoices) {
       setIsLoadingVoices(true);
       try {
         // Get API key from settings store
@@ -160,24 +155,24 @@ const AINode = ({ data, selected, id }: AINodeProps) => {
         }
       }
     }
-  }, [data.model, voices.length, isLoadingVoices]);
+  }, [nodeData.model, voices.length, isLoadingVoices]);
   
   // Load voices when component mounts for ElevenLabs
   useEffect(() => {
-    if (data.model === 'elevenlabs' && voices.length === 0 && !isLoadingVoices) {
+    if (nodeData.model === 'elevenlabs' && voices.length === 0 && !isLoadingVoices) {
       const abortController = new AbortController();
       loadVoices(abortController.signal);
       return () => abortController.abort();
     }
-  }, [data.model, loadVoices, voices.length, isLoadingVoices]);
+  }, [nodeData.model, loadVoices, voices.length, isLoadingVoices]);
 
   // Initialize subModel if not set
   useEffect(() => {
-    if (!data.subModel) {
-      const defaultSub = getDefaultSubModel(data.model);
+    if (!nodeData.subModel) {
+      const defaultSub = getDefaultSubModel(nodeData.model);
       updateNodeData(id, { subModel: defaultSub });
     }
-  }, [data.model, data.subModel, id, updateNodeData]);
+  }, [nodeData.model, nodeData.subModel, id, updateNodeData]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -218,7 +213,7 @@ const AINode = ({ data, selected, id }: AINodeProps) => {
   const handleSubModelChange = (subModel: SubModel) => {
     updateNodeData(id, { 
       subModel,
-      label: getSubModelLabel(data.model, subModel)
+      label: getSubModelLabel(nodeData.model, subModel)
     });
     setIsSubModelDropdownOpen(false);
   };
@@ -234,7 +229,7 @@ const AINode = ({ data, selected, id }: AINodeProps) => {
   const handleSystemPromptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setLocalSystemPrompt(e.target.value);
     // If context is applied, clear it when user manually edits
-    if (data.contextId) {
+    if (nodeData.contextId) {
       updateNodeData(id, { contextId: undefined });
     }
   };
@@ -248,14 +243,14 @@ const AINode = ({ data, selected, id }: AINodeProps) => {
     setLocalTemperature(value);
     updateNodeData(id, { temperature: value });
     // If context is applied, clear it when user manually edits
-    if (data.contextId) {
+    if (nodeData.contextId) {
       updateNodeData(id, { contextId: undefined });
     }
   };
 
   const handleRunNode = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (data.isRunning || isWorkflowRunning) return;
+    if (nodeData.isRunning || isWorkflowRunning) return;
     await runSingleNode(id);
   };
 
@@ -285,8 +280,8 @@ const AINode = ({ data, selected, id }: AINodeProps) => {
         // Apply context's system prompt and temperature
         updateNodeData(id, {
           contextId: contextId,
-          systemPrompt: selectedContext.system_prompt || data.systemPrompt || '',
-          temperature: selectedContext.temperature ?? data.temperature ?? 0.7,
+          systemPrompt: selectedContext.system_prompt || nodeData.systemPrompt || '',
+          temperature: selectedContext.temperature ?? nodeData.temperature ?? 0.7,
         });
         setLocalSystemPrompt(selectedContext.system_prompt || '');
         setLocalTemperature(selectedContext.temperature ?? 0.7);
@@ -304,14 +299,14 @@ const AINode = ({ data, selected, id }: AINodeProps) => {
           group relative w-[320px] rounded-xl
           overflow-visible
           transition-all duration-300
-          ${data.isRunning 
+          ${nodeData.isRunning 
             ? 'border-0 bg-zinc-900' 
             : 'border-2 border-zinc-700 hover:border-zinc-600 bg-zinc-900'
           }
         `}
       >
       {/* BorderBeam for running state */}
-      {data.isRunning && (
+      {nodeData.isRunning && (
         <BorderBeam 
           duration={8} 
           borderWidth={2}
@@ -335,9 +330,9 @@ const AINode = ({ data, selected, id }: AINodeProps) => {
               transition-all text-left
             `}
           >
-            <span className={styles.icon}>{modelIcons[data.model]}</span>
+            <span className={styles.icon}>{modelIcons[nodeData.model]}</span>
             <span className="text-xs font-medium text-zinc-200 flex-1">
-              {modelLabels[data.model]}
+              {modelLabels[nodeData.model]}
             </span>
             <ChevronDown className={`w-3 h-3 text-zinc-500 transition-transform ${isProviderDropdownOpen ? 'rotate-180' : ''}`} />
           </button>
@@ -357,12 +352,12 @@ const AINode = ({ data, selected, id }: AINodeProps) => {
                   className={`
                     flex items-center gap-2 w-full px-3 py-2 text-left
                     hover:bg-zinc-700/50 transition-colors
-                    ${data.model === model ? 'bg-zinc-700/30' : ''}
+                    ${nodeData.model === model ? 'bg-zinc-700/30' : ''}
                   `}
                 >
                   <span className={modelStyles[model].icon}>{modelIcons[model]}</span>
                   <span className="text-sm text-zinc-200">{modelLabels[model]}</span>
-                  {data.model === model && (
+                  {nodeData.model === model && (
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 ml-auto" />
                   )}
                 </button>
@@ -373,7 +368,7 @@ const AINode = ({ data, selected, id }: AINodeProps) => {
       </div>
 
       {/* Prompt Textarea - Hidden for ElevenLabs */}
-      {data.model !== 'elevenlabs' && (
+      {nodeData.model !== 'elevenlabs' && (
         <div className="px-3 pb-2">
           <textarea
             ref={textareaRef}
@@ -406,13 +401,13 @@ const AINode = ({ data, selected, id }: AINodeProps) => {
       )}
 
       {/* Voice Selector for ElevenLabs */}
-      {data.model === 'elevenlabs' && (
+      {nodeData.model === 'elevenlabs' && (
         <div className="px-3 pb-2">
           <label className="block text-xs font-medium text-zinc-400 mb-2">
             Select Voice
           </label>
           <select
-            value={data.voiceId || ''}
+            value={nodeData.voiceId || ''}
             onChange={(e) => {
               updateNodeData(id, { voiceId: e.target.value || undefined });
             }}
@@ -458,10 +453,10 @@ const AINode = ({ data, selected, id }: AINodeProps) => {
       )}
 
       {/* Output Preview (if available) */}
-      {data.output && (
+      {nodeData.output && (
         <div className="px-3 pb-3">
           <div className="p-2 bg-zinc-950 border border-zinc-800 rounded-lg max-h-[60px] overflow-y-auto">
-            <p className="text-xs text-zinc-400 line-clamp-3">{data.output}</p>
+            <p className="text-xs text-zinc-400 line-clamp-3">{nodeData.output}</p>
           </div>
         </div>
       )}
@@ -483,7 +478,7 @@ const AINode = ({ data, selected, id }: AINodeProps) => {
               <div className="flex items-center gap-2">
                 <span className="text-xs text-zinc-400">Model:</span>
                 <span className="text-xs font-medium text-zinc-200">
-                  {getSubModelLabel(data.model, currentSubModel)}
+                  {getSubModelLabel(nodeData.model, currentSubModel)}
                 </span>
               </div>
               <ChevronDown className={`w-3 h-3 text-zinc-500 transition-transform ${isSubModelDropdownOpen ? 'rotate-180' : ''}`} />
@@ -573,13 +568,13 @@ const AINode = ({ data, selected, id }: AINodeProps) => {
                 </div>
 
                 {/* Voice Selector for ElevenLabs */}
-                {data.model === 'elevenlabs' && (
+                {nodeData.model === 'elevenlabs' && (
                   <div className="mb-4">
                     <label className="block text-xs font-medium text-zinc-400 mb-2">
                       Voice
                     </label>
                     <select
-                      value={data.voiceId || ''}
+                      value={nodeData.voiceId || ''}
                       onChange={(e) => {
                         updateNodeData(id, { voiceId: e.target.value || undefined });
                       }}
@@ -621,13 +616,13 @@ const AINode = ({ data, selected, id }: AINodeProps) => {
                 )}
 
                 {/* Context Selector */}
-                {data.model !== 'elevenlabs' && (
+                {nodeData.model !== 'elevenlabs' && (
                   <div className="mb-4">
                     <label className="block text-xs font-medium text-zinc-400 mb-2">
                       Context Template
                     </label>
                     <select
-                      value={data.contextId || ''}
+                      value={nodeData.contextId || ''}
                       onChange={(e) => handleContextSelect(e.target.value || null)}
                       className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-zinc-600"
                       onClick={(e) => e.stopPropagation()}
@@ -655,15 +650,15 @@ const AINode = ({ data, selected, id }: AINodeProps) => {
                     value={localSystemPrompt}
                     onChange={handleSystemPromptChange}
                     onBlur={handleSystemPromptBlur}
-                    disabled={!!data.contextId}
-                    placeholder={data.contextId ? 'Using context template...' : 'Enter system prompt...'}
+                    disabled={!!nodeData.contextId}
+                    placeholder={nodeData.contextId ? 'Using context template...' : 'Enter system prompt...'}
                     className={`
                       w-full min-h-[80px] px-3 py-2 
                       bg-zinc-950 border rounded-lg
                       text-sm text-zinc-200 placeholder-zinc-600
                       resize-none
                       focus:outline-none focus:ring-1 transition-all
-                      ${data.contextId 
+                      ${nodeData.contextId 
                         ? 'border-zinc-800/50 text-zinc-500 cursor-not-allowed' 
                         : 'border-zinc-700 focus:border-zinc-600 focus:ring-zinc-600'
                       }
@@ -687,10 +682,10 @@ const AINode = ({ data, selected, id }: AINodeProps) => {
                     step="0.1"
                     value={localTemperature}
                     onChange={handleTemperatureChange}
-                    disabled={!!data.contextId}
+                    disabled={!!nodeData.contextId}
                     className={`
                       w-full h-2 bg-zinc-900 rounded-lg appearance-none cursor-pointer
-                      ${data.contextId ? 'opacity-50 cursor-not-allowed' : ''}
+                      ${nodeData.contextId ? 'opacity-50 cursor-not-allowed' : ''}
                     `}
                     style={{
                       background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${(localTemperature / 2) * 100}%, #27272a ${(localTemperature / 2) * 100}%, #27272a 100%)`
@@ -705,19 +700,19 @@ const AINode = ({ data, selected, id }: AINodeProps) => {
           {/* Play button */}
           <button
             onClick={handleRunNode}
-            disabled={data.isRunning || isWorkflowRunning}
+            disabled={nodeData.isRunning || isWorkflowRunning}
             className={`
               p-1.5 rounded-lg transition-colors
-              ${data.isRunning || isWorkflowRunning
+              ${nodeData.isRunning || isWorkflowRunning
                 ? 'bg-zinc-800 text-zinc-600 cursor-not-allowed'
                 : 'hover:bg-zinc-700 text-zinc-500 hover:text-emerald-400'
               }
             `}
             title="Run node"
           >
-            {data.isRunning ? (
+            {nodeData.isRunning ? (
               <Loader2 className="w-4 h-4 text-yellow-400 animate-spin" />
-            ) : data.hasOutput ? (
+            ) : nodeData.hasOutput ? (
               <CheckCircle2 className="w-4 h-4 text-emerald-500" />
             ) : (
               <Play className="w-4 h-4" />
@@ -753,21 +748,21 @@ const AINode = ({ data, selected, id }: AINodeProps) => {
             Has input
           </span>
         )}
-        {data.contextId && (
+        {nodeData.contextId && (
           <span className="px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 rounded text-[10px]">
             Context
           </span>
         )}
-        {data.systemPrompt && !data.contextId && (
+        {nodeData.systemPrompt && !nodeData.contextId && (
           <span className="px-1.5 py-0.5 bg-zinc-800 rounded text-zinc-400 text-[10px]">
             System
           </span>
         )}
-        <span>Temp: {data.temperature?.toFixed(1) || '0.7'}</span>
+        <span>Temp: {nodeData.temperature?.toFixed(1) || '0.7'}</span>
       </span>
       <span className="flex items-center gap-1.5">
-        <span className={`w-1.5 h-1.5 rounded-full ${data.isRunning ? 'bg-yellow-500 animate-pulse' : data.hasOutput ? 'bg-emerald-500' : styles.indicator}`} />
-        <span>{data.isRunning ? 'Running...' : data.hasOutput ? 'Complete' : 'Ready'}</span>
+        <span className={`w-1.5 h-1.5 rounded-full ${nodeData.isRunning ? 'bg-yellow-500 animate-pulse' : nodeData.hasOutput ? 'bg-emerald-500' : styles.indicator}`} />
+        <span>{nodeData.isRunning ? 'Running...' : nodeData.hasOutput ? 'Complete' : 'Ready'}</span>
       </span>
     </div>
     </div>
