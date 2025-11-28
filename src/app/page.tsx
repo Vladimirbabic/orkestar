@@ -179,7 +179,7 @@ export default function WorkflowsPage() {
                           <Crown className="w-4 h-4" />
                           {subscriptionStatus?.tier === 'free' ? 'Upgrade' : 'Subscription'}
                         </span>
-                        <span className={`text-xs ${subscriptionStatus?.tier === 'pro' ? 'text-violet-400' : subscriptionStatus?.tier === 'enterprise' ? 'text-amber-400' : 'text-zinc-500'}`}>
+                        <span className={`text-xs ${subscriptionStatus?.tier === 'pro' ? 'text-violet-400' : 'text-zinc-500'}`}>
                           {PRICING_TIERS[subscriptionStatus?.tier || 'free'].name}
                         </span>
                       </button>
