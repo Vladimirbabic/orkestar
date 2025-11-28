@@ -96,75 +96,84 @@ const AINode = ({ data, selected, id, ...props }: NodeProps) => {
     setLocalTemperature(nodeData.temperature || 0.7);
   }, [nodeData.temperature]);
 
-  // Load contexts when component mounts if contextId is set
+  // Track if contexts have been loaded
+  const contextsLoadedRef = useRef(false);
+  
+  // Load contexts when component mounts if contextId is set (only once)
   useEffect(() => {
-    if (nodeData.contextId && contexts.length === 0) {
-      const abortController = new AbortController();
-      let isCancelled = false;
-      
-      listContexts()
-        .then((loadedContexts) => {
-          if (!isCancelled && !abortController.signal.aborted) {
-            setContexts(loadedContexts);
-          }
-        })
-        .catch((error) => {
-          if (!isCancelled && !abortController.signal.aborted) {
-            console.error('Failed to load contexts:', error);
-          }
-        });
-      
-      return () => {
-        isCancelled = true;
-        abortController.abort();
-      };
+    if (!nodeData.contextId || contextsLoadedRef.current || contexts.length > 0) {
+      return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nodeData.contextId]);
+    
+    contextsLoadedRef.current = true;
+    let isCancelled = false;
+    
+    listContexts()
+      .then((loadedContexts) => {
+        if (!isCancelled) {
+          setContexts(loadedContexts);
+        }
+      })
+      .catch((error) => {
+        if (!isCancelled) {
+          console.error('Failed to load contexts:', error);
+          contextsLoadedRef.current = false; // Allow retry on error
+        }
+      });
+    
+    return () => {
+      isCancelled = true;
+    };
+  }, [nodeData.contextId, contexts.length]);
 
-  // Load voices for ElevenLabs with cleanup
-  const loadVoices = useCallback(async (abortSignal: AbortSignal) => {
-    if (nodeData.model === 'elevenlabs' && voices.length === 0 && !isLoadingVoices) {
-      setIsLoadingVoices(true);
-      try {
-        // Get API key from settings store
-        const { useSettingsStore } = await import('@/store/settingsStore');
-        const apiKey = useSettingsStore.getState().apiKeys.elevenlabs;
+  // Track if voices have been loaded to prevent re-fetching
+  const voicesLoadedRef = useRef(false);
+  
+  // Reusable function to load voices
+  const loadVoices = useCallback(async (abortSignal?: AbortSignal) => {
+    if (isLoadingVoices || voices.length > 0) return;
+    
+    setIsLoadingVoices(true);
+    try {
+      const { useSettingsStore } = await import('@/store/settingsStore');
+      const apiKey = useSettingsStore.getState().apiKeys.elevenlabs;
+      
+      if (apiKey && !abortSignal?.aborted) {
+        const response = await fetch('https://api.elevenlabs.io/v1/voices', {
+          method: 'GET',
+          headers: { 'xi-api-key': apiKey },
+          signal: abortSignal,
+        });
         
-        if (apiKey && !abortSignal.aborted) {
-          const response = await fetch('https://api.elevenlabs.io/v1/voices', {
-            method: 'GET',
-            headers: {
-              'xi-api-key': apiKey,
-            },
-            signal: abortSignal,
-          });
-          
-          if (response.ok && !abortSignal.aborted) {
-            const voicesData = await response.json();
-            setVoices(voicesData.voices || []);
-          }
-        }
-      } catch (error) {
-        if (error instanceof Error && error.name !== 'AbortError') {
-          console.error('Failed to load voices:', error);
-        }
-      } finally {
-        if (!abortSignal.aborted) {
-          setIsLoadingVoices(false);
+        if (response.ok && !abortSignal?.aborted) {
+          const voicesData = await response.json();
+          setVoices(voicesData.voices || []);
         }
       }
+    } catch (error) {
+      if (error instanceof Error && error.name !== 'AbortError') {
+        console.error('Failed to load voices:', error);
+      }
+      voicesLoadedRef.current = false; // Allow retry on error
+    } finally {
+      if (!abortSignal?.aborted) {
+        setIsLoadingVoices(false);
+      }
     }
-  }, [nodeData.model, voices.length, isLoadingVoices]);
+  }, [isLoadingVoices, voices.length]);
   
-  // Load voices when component mounts for ElevenLabs
+  // Load voices when component mounts for ElevenLabs (only once)
   useEffect(() => {
-    if (nodeData.model === 'elevenlabs' && voices.length === 0 && !isLoadingVoices) {
-      const abortController = new AbortController();
-      loadVoices(abortController.signal);
-      return () => abortController.abort();
+    if (nodeData.model !== 'elevenlabs' || voicesLoadedRef.current || voices.length > 0) {
+      return;
     }
-  }, [nodeData.model, loadVoices, voices.length, isLoadingVoices]);
+    
+    const abortController = new AbortController();
+    voicesLoadedRef.current = true;
+    
+    loadVoices(abortController.signal);
+    return () => abortController.abort();
+  }, [nodeData.model, voices.length, loadVoices]);
 
   // Initialize subModel if not set
   useEffect(() => {
@@ -414,8 +423,7 @@ const AINode = ({ data, selected, id, ...props }: NodeProps) => {
             className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-zinc-600 focus:border-zinc-600"
             onClick={(e) => {
               e.stopPropagation();
-              const abortController = new AbortController();
-              loadVoices(abortController.signal);
+              loadVoices();
             }}
           >
             <option value="">Select a voice...</option>

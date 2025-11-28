@@ -189,13 +189,23 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   },
 
   updateNodeData: (nodeId, data) => {
-    set({
-      nodes: get().nodes.map((node) =>
-        node.id === nodeId
-          ? { ...node, data: { ...node.data, ...data } }
-          : node
-      ),
-    });
+    const nodes = get().nodes;
+    const nodeIndex = nodes.findIndex((n) => n.id === nodeId);
+    if (nodeIndex === -1) return;
+    
+    const node = nodes[nodeIndex];
+    const newData = { ...node.data, ...data };
+    
+    // Only update if data actually changed
+    const hasChanges = Object.keys(data).some(
+      (key) => node.data[key as keyof typeof node.data] !== data[key as keyof typeof data]
+    );
+    
+    if (!hasChanges) return;
+    
+    const newNodes = [...nodes];
+    newNodes[nodeIndex] = { ...node, data: newData };
+    set({ nodes: newNodes });
   },
 
   setSelectedNode: (node) => {

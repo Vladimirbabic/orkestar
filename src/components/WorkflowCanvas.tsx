@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useMemo } from 'react';
+import React, { useCallback, useRef, useMemo, memo } from 'react';
 import {
   ReactFlow,
   Background,
@@ -16,20 +16,57 @@ import AINode from '@/components/nodes/AINode';
 import ResultNode from '@/components/nodes/ResultNode';
 import { Key, MousePointer } from 'lucide-react';
 
+// Memoize node types to prevent recreation
 const nodeTypes = {
   aiNode: AINode,
   resultNode: ResultNode,
 };
 
+// Memoized MiniMap to prevent re-renders
+const MemoizedMiniMap = memo(function MemoizedMiniMap() {
+  const nodeColor = useCallback((node: { type?: string; data?: { model?: string } }) => {
+    if (node.type === 'resultNode') return '#10b981';
+    const colors: Record<string, string> = {
+      openai: '#10b981',
+      gemini: '#3b82f6',
+      'stable-diffusion': '#8b5cf6',
+      elevenlabs: '#a855f7',
+      custom: '#71717a',
+      supadata: '#10b981',
+    };
+    return colors[node.data?.model as string] || '#71717a';
+  }, []);
+
+  return (
+    <MiniMap
+      nodeColor={nodeColor}
+      maskColor="rgba(0, 0, 0, 0.85)"
+      style={{
+        backgroundColor: '#09090b',
+      }}
+    />
+  );
+});
+
 function WorkflowCanvasInner() {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition } = useReactFlow();
   
-  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, addNode, addResultNode, setSelectedNode } =
-    useWorkflowStore();
-  const { getEnabledModels, openSettings, apiKeys } = useSettingsStore();
+  // Use selectors to minimize re-renders
+  const nodes = useWorkflowStore((state) => state.nodes);
+  const edges = useWorkflowStore((state) => state.edges);
+  const onNodesChange = useWorkflowStore((state) => state.onNodesChange);
+  const onEdgesChange = useWorkflowStore((state) => state.onEdgesChange);
+  const onConnect = useWorkflowStore((state) => state.onConnect);
+  const addNode = useWorkflowStore((state) => state.addNode);
+  const addResultNode = useWorkflowStore((state) => state.addResultNode);
+  const setSelectedNode = useWorkflowStore((state) => state.setSelectedNode);
+  
+  const apiKeys = useSettingsStore((state) => state.apiKeys);
+  const getEnabledModels = useSettingsStore((state) => state.getEnabledModels);
+  const openSettings = useSettingsStore((state) => state.openSettings);
 
-  const enabledModels = useMemo(() => getEnabledModels(), [apiKeys]);
+  const enabledModels = useMemo(() => getEnabledModels(), [getEnabledModels, apiKeys]);
   const hasModels = enabledModels.length > 0;
   const hasNodes = nodes.length > 0;
 
@@ -94,24 +131,7 @@ function WorkflowCanvasInner() {
         {hasNodes && (
           <>
             <Controls />
-            <MiniMap
-              nodeColor={(node) => {
-                if (node.type === 'resultNode') return '#10b981';
-                const colors: Record<string, string> = {
-                  openai: '#10b981',
-                  gemini: '#3b82f6',
-                  'stable-diffusion': '#8b5cf6',
-                  elevenlabs: '#a855f7',
-                  custom: '#71717a',
-                  supadata: '#10b981',
-                };
-                return colors[node.data?.model as string] || '#71717a';
-              }}
-              maskColor="rgba(0, 0, 0, 0.85)"
-              style={{
-                backgroundColor: '#09090b',
-              }}
-            />
+            <MemoizedMiniMap />
           </>
         )}
       </ReactFlow>
