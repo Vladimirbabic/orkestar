@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { recordUsage, canPerformAction } from '@/lib/subscriptionService';
 
 // ============================================================================
 // Type Definitions
@@ -96,6 +97,21 @@ const DEFAULT_ELEVENLABS_VOICE = '21m00Tcm4TlvDq8ikWAM'; // Rachel voice
 
 export async function POST(request: NextRequest) {
   try {
+    const userId = request.headers.get('x-user-id');
+    
+    // Check usage limits if user ID is provided
+    if (userId) {
+      const permission = await canPerformAction(userId, 'run_ai');
+      if (!permission.allowed) {
+        return NextResponse.json({ 
+          error: permission.reason,
+          upgradeRequired: true,
+          limit: permission.limit,
+          current: permission.current,
+        }, { status: 403 });
+      }
+    }
+    
     const body: AIRequestBody = await request.json();
     const { 
       model, 
@@ -140,6 +156,11 @@ export async function POST(request: NextRequest) {
         break;
       default:
         return NextResponse.json({ error: `Model ${model} is not yet supported` }, { status: 400 });
+    }
+
+    // Record usage after successful execution
+    if (userId) {
+      await recordUsage(userId, 'ai_calls', 1);
     }
 
     return NextResponse.json({ result });

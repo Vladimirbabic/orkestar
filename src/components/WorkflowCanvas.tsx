@@ -10,10 +10,15 @@ import {
   ReactFlowProvider,
   useReactFlow,
 } from '@xyflow/react';
-import { useWorkflowStore, AIModel, NodeData } from '@/store/workflowStore';
+import { useWorkflowStore, AIModel, NodeData, IntegrationType } from '@/store/workflowStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import AINode from '@/components/nodes/AINode';
 import ResultNode from '@/components/nodes/ResultNode';
+import WebhookNode from '@/components/nodes/WebhookNode';
+import ScheduleNode from '@/components/nodes/ScheduleNode';
+import ConditionNode from '@/components/nodes/ConditionNode';
+import TransformNode from '@/components/nodes/TransformNode';
+import IntegrationNode from '@/components/nodes/IntegrationNode';
 import NodeSettingsPanel from '@/components/NodeSettingsPanel';
 import { Key, MousePointer } from 'lucide-react';
 
@@ -21,13 +26,29 @@ import { Key, MousePointer } from 'lucide-react';
 const nodeTypes = {
   aiNode: AINode,
   resultNode: ResultNode,
+  webhookNode: WebhookNode,
+  scheduleNode: ScheduleNode,
+  conditionNode: ConditionNode,
+  transformNode: TransformNode,
+  integrationNode: IntegrationNode,
 };
 
 // Memoized MiniMap to prevent re-renders
 const MemoizedMiniMap = memo(function MemoizedMiniMap() {
   const nodeColor = useCallback((node: { type?: string; data?: { model?: string } }) => {
-    if (node.type === 'resultNode') return '#10b981';
-    const colors: Record<string, string> = {
+    // Node type colors
+    const typeColors: Record<string, string> = {
+      resultNode: '#10b981',
+      webhookNode: '#f59e0b',
+      scheduleNode: '#3b82f6',
+      conditionNode: '#a855f7',
+      transformNode: '#06b6d4',
+      integrationNode: '#ec4899',
+    };
+    if (node.type && typeColors[node.type]) return typeColors[node.type];
+    
+    // AI model colors
+    const modelColors: Record<string, string> = {
       openai: '#10b981',
       gemini: '#3b82f6',
       'stable-diffusion': '#8b5cf6',
@@ -35,7 +56,7 @@ const MemoizedMiniMap = memo(function MemoizedMiniMap() {
       custom: '#71717a',
       supadata: '#10b981',
     };
-    return colors[node.data?.model as string] || '#71717a';
+    return modelColors[node.data?.model as string] || '#71717a';
   }, []);
 
   return (
@@ -61,6 +82,11 @@ function WorkflowCanvasInner() {
   const onConnect = useWorkflowStore((state) => state.onConnect);
   const addNode = useWorkflowStore((state) => state.addNode);
   const addResultNode = useWorkflowStore((state) => state.addResultNode);
+  const addWebhookNode = useWorkflowStore((state) => state.addWebhookNode);
+  const addScheduleNode = useWorkflowStore((state) => state.addScheduleNode);
+  const addConditionNode = useWorkflowStore((state) => state.addConditionNode);
+  const addTransformNode = useWorkflowStore((state) => state.addTransformNode);
+  const addIntegrationNode = useWorkflowStore((state) => state.addIntegrationNode);
   const setSelectedNode = useWorkflowStore((state) => state.setSelectedNode);
   const settingsNodeId = useWorkflowStore((state) => state.settingsNodeId);
   const setSettingsNodeId = useWorkflowStore((state) => state.setSettingsNodeId);
@@ -99,13 +125,36 @@ function WorkflowCanvasInner() {
         y: event.clientY,
       });
 
-      if (type === 'result') {
-        addResultNode(position);
-      } else {
-        addNode(type as AIModel, position);
+      // Handle different node types
+      switch (type) {
+        case 'result':
+          addResultNode(position);
+          break;
+        case 'webhook':
+          addWebhookNode(position);
+          break;
+        case 'schedule':
+          addScheduleNode(position);
+          break;
+        case 'condition':
+          addConditionNode(position);
+          break;
+        case 'transform':
+          addTransformNode(position);
+          break;
+        case 'email':
+        case 'google-sheets':
+        case 'slack':
+        case 'notion':
+        case 'discord':
+        case 'airtable':
+          addIntegrationNode(type as IntegrationType, position);
+          break;
+        default:
+          addNode(type as AIModel, position);
       }
     },
-    [screenToFlowPosition, addNode, addResultNode]
+    [screenToFlowPosition, addNode, addResultNode, addWebhookNode, addScheduleNode, addConditionNode, addTransformNode, addIntegrationNode]
   );
 
   const onPaneClick = useCallback(() => {

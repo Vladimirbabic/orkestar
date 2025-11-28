@@ -6,7 +6,11 @@ import { listWorkflows, deleteWorkflow, type Workflow } from '@/lib/workflowServ
 import { useAuth } from '@/context/AuthContext';
 import { useSettingsStore } from '@/store/settingsStore';
 import SettingsModal from '@/components/SettingsModal';
-import { Plus, Workflow as WorkflowIcon, Trash2, Calendar, FileText, LogOut, User, Key } from 'lucide-react';
+import { Plus, Workflow as WorkflowIcon, Trash2, Calendar, FileText, LogOut, User, Key, Crown, LayoutTemplate, Clock } from 'lucide-react';
+import { useSubscription } from '@/context/SubscriptionContext';
+import { UsageIndicator } from '@/components/UsageIndicator';
+import { UpgradePrompt } from '@/components/UpgradePrompt';
+import { PRICING_TIERS } from '@/lib/stripe';
 
 export default function WorkflowsPage() {
   const router = useRouter();
@@ -16,7 +20,9 @@ export default function WorkflowsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const enabledModelsCount = getEnabledModels().length;
+  const { status: subscriptionStatus, canCreateWorkflow } = useSubscription();
 
   useEffect(() => {
     loadWorkflows();
@@ -35,6 +41,10 @@ export default function WorkflowsPage() {
   };
 
   const handleCreateWorkflow = () => {
+    if (!canCreateWorkflow()) {
+      setShowUpgradePrompt(true);
+      return;
+    }
     router.push('/workflows/new');
   };
 
@@ -71,6 +81,14 @@ export default function WorkflowsPage() {
     <div className="min-h-screen bg-zinc-950">
       {/* Settings Modal */}
       <SettingsModal />
+      
+      {/* Upgrade Prompt */}
+      {showUpgradePrompt && (
+        <UpgradePrompt 
+          feature="workflows" 
+          onClose={() => setShowUpgradePrompt(false)} 
+        />
+      )}
       {/* Header */}
       <div className="border-b border-zinc-800 bg-zinc-900/50">
         <div className="max-w-7xl mx-auto px-6 py-4">
@@ -85,6 +103,20 @@ export default function WorkflowsPage() {
               </div>
             </div>
             <div className="flex items-center gap-3">
+              <button
+                onClick={() => router.push('/templates')}
+                className="px-4 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 hover:bg-zinc-700 transition-colors text-sm font-medium flex items-center gap-2"
+              >
+                <LayoutTemplate className="w-4 h-4" />
+                Templates
+              </button>
+              <button
+                onClick={() => router.push('/history')}
+                className="px-4 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 hover:bg-zinc-700 transition-colors text-sm font-medium flex items-center gap-2"
+              >
+                <Clock className="w-4 h-4" />
+                History
+              </button>
               <button
                 onClick={() => router.push('/contexts')}
                 className="px-4 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 hover:bg-zinc-700 transition-colors text-sm font-medium flex items-center gap-2"
@@ -135,6 +167,21 @@ export default function WorkflowsPage() {
                           API Keys
                         </span>
                         <span className="text-xs text-zinc-500">{enabledModelsCount} configured</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          router.push('/pricing');
+                        }}
+                        className="w-full px-3 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-700 flex items-center justify-between transition-colors"
+                      >
+                        <span className="flex items-center gap-2">
+                          <Crown className="w-4 h-4" />
+                          {subscriptionStatus?.tier === 'free' ? 'Upgrade' : 'Subscription'}
+                        </span>
+                        <span className={`text-xs ${subscriptionStatus?.tier === 'pro' ? 'text-violet-400' : subscriptionStatus?.tier === 'enterprise' ? 'text-amber-400' : 'text-zinc-500'}`}>
+                          {PRICING_TIERS[subscriptionStatus?.tier || 'free'].name}
+                        </span>
                       </button>
                       <div className="border-t border-zinc-700 mt-1 pt-1">
                         <button

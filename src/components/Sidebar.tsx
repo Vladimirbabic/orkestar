@@ -5,10 +5,8 @@ import { AIModel, useWorkflowStore } from '@/store/workflowStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import {
   Sparkles,
-  Bot,
   Zap,
   Image as ImageIcon,
-  Palette,
   Settings,
   Plus,
   Workflow,
@@ -17,10 +15,29 @@ import {
   Layers,
   Key,
   FileOutput,
-  Banana,
   Volume2,
   Database,
+  Webhook,
+  Calendar,
+  Crown,
+  Clock,
+  Mail,
+  GitBranch,
+  Code2,
+  Puzzle,
 } from 'lucide-react';
+import {
+  OpenAILogo,
+  GeminiLogo,
+  SlackLogo,
+  NotionLogo,
+  GoogleSheetsLogo,
+  ElevenLabsLogo,
+  SupadataLogo,
+} from '@/components/icons/BrandLogos';
+import { useSubscription } from '@/context/SubscriptionContext';
+import { useRouter } from 'next/navigation';
+import { IntegrationType } from '@/store/workflowStore';
 
 interface ModelOption {
   id: AIModel;
@@ -36,7 +53,7 @@ const allModelOptions: ModelOption[] = [
     id: 'openai',
     label: 'GPT-5.1',
     description: 'OpenAI latest model',
-    icon: <Sparkles className="w-4 h-4" />,
+    icon: <OpenAILogo className="w-4 h-4" />,
     iconColor: 'text-emerald-500',
     category: 'text',
   },
@@ -44,7 +61,7 @@ const allModelOptions: ModelOption[] = [
     id: 'gemini',
     label: 'Gemini 2.0',
     description: 'Google DeepMind (Text & Image)',
-    icon: <Zap className="w-4 h-4" />,
+    icon: <GeminiLogo className="w-4 h-4" />,
     iconColor: 'text-blue-500',
     category: 'text',
   },
@@ -52,7 +69,7 @@ const allModelOptions: ModelOption[] = [
     id: 'elevenlabs',
     label: 'ElevenLabs',
     description: 'Voice synthesis',
-    icon: <Volume2 className="w-4 h-4" />,
+    icon: <ElevenLabsLogo className="w-4 h-4" />,
     iconColor: 'text-purple-500',
     category: 'text',
   },
@@ -76,22 +93,29 @@ const allModelOptions: ModelOption[] = [
     id: 'supadata',
     label: 'Supadata',
     description: 'Web content extraction',
-    icon: <Database className="w-4 h-4" />,
+    icon: <SupadataLogo className="w-4 h-4" />,
     iconColor: 'text-green-500',
     category: 'text',
   },
 ];
 
 export default function Sidebar() {
-  const { addNode, addResultNode } = useWorkflowStore();
+  const router = useRouter();
+  const { addNode, addResultNode, addWebhookNode, addScheduleNode, addConditionNode, addTransformNode, addIntegrationNode } = useWorkflowStore();
   const { hasApiKey, openSettings } = useSettingsStore();
+  const { status: subscriptionStatus } = useSubscription();
   const [searchQuery, setSearchQuery] = useState('');
   const [isMounted, setIsMounted] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
+    events: true,
+    integrations: false,
+    logic: false,
     text: true,
-    image: true,
+    image: false,
     output: true,
   });
+  
+  const isPro = subscriptionStatus?.tier === 'pro';
 
   // Only check API keys after component mounts to avoid hydration mismatch
   useEffect(() => {
@@ -114,6 +138,47 @@ export default function Sidebar() {
 
   const handleAddResultNode = () => {
     addResultNode({ x: 600, y: 300 });
+  };
+
+  const handleAddWebhookNode = () => {
+    if (!isPro) {
+      router.push('/pricing');
+      return;
+    }
+    addWebhookNode({ x: 200, y: 300 });
+  };
+
+  const handleAddScheduleNode = () => {
+    if (!isPro) {
+      router.push('/pricing');
+      return;
+    }
+    addScheduleNode({ x: 200, y: 300 });
+  };
+
+  const handleAddConditionNode = () => {
+    if (!isPro) {
+      router.push('/pricing');
+      return;
+    }
+    addConditionNode({ x: 400, y: 300 });
+  };
+
+  const handleAddTransformNode = () => {
+    if (!isPro) {
+      router.push('/pricing');
+      return;
+    }
+    addTransformNode({ x: 400, y: 300 });
+  };
+
+  const handleAddIntegrationNode = (type: IntegrationType) => {
+    const proIntegrations: IntegrationType[] = ['google-sheets', 'slack', 'notion', 'discord', 'airtable'];
+    if (proIntegrations.includes(type) && !isPro) {
+      router.push('/pricing');
+      return;
+    }
+    addIntegrationNode(type, { x: 400, y: 300 });
   };
 
   const toggleCategory = (category: string) => {
@@ -175,6 +240,293 @@ export default function Sidebar() {
 
           {/* Models List */}
           <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-4">
+            {/* Events / Triggers */}
+            <div>
+              <button
+                onClick={() => toggleCategory('events')}
+                className="flex items-center gap-2 w-full text-xs font-medium text-zinc-500 uppercase tracking-wider mb-2 hover:text-zinc-400 transition-colors px-1"
+              >
+                <ChevronDown
+                  className={`w-3 h-3 transition-transform ${
+                    expandedCategories.events ? '' : '-rotate-90'
+                  }`}
+                />
+                <Calendar className="w-3 h-3" />
+                Events
+              </button>
+              {expandedCategories.events && (
+                <div className="space-y-1">
+                  {/* Webhook */}
+                  <div
+                    draggable={isPro}
+                    onDragStart={(e) => isPro && onDragStart(e, 'webhook')}
+                    onClick={handleAddWebhookNode}
+                    className={`group flex items-center gap-3 p-2.5 rounded-md border border-transparent transition-all ${
+                      isPro
+                        ? 'cursor-grab bg-zinc-900/50 hover:border-amber-800/50 hover:bg-amber-950/20 active:cursor-grabbing'
+                        : 'cursor-pointer bg-zinc-900/30 hover:bg-zinc-800/50'
+                    }`}
+                  >
+                    <div className="text-amber-500">
+                      <Webhook className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-medium text-zinc-200">Webhook</h3>
+                        {!isPro && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white">
+                            PRO
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-zinc-500">HTTP trigger</p>
+                    </div>
+                    {isPro ? (
+                      <Plus className="w-4 h-4 text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    ) : (
+                      <Crown className="w-4 h-4 text-violet-400" />
+                    )}
+                  </div>
+                  {/* Schedule */}
+                  <div
+                    draggable={isPro}
+                    onDragStart={(e) => isPro && onDragStart(e, 'schedule')}
+                    onClick={handleAddScheduleNode}
+                    className={`group flex items-center gap-3 p-2.5 rounded-md border border-transparent transition-all ${
+                      isPro
+                        ? 'cursor-grab bg-zinc-900/50 hover:border-blue-800/50 hover:bg-blue-950/20 active:cursor-grabbing'
+                        : 'cursor-pointer bg-zinc-900/30 hover:bg-zinc-800/50'
+                    }`}
+                  >
+                    <div className="text-blue-500">
+                      <Clock className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-medium text-zinc-200">Schedule</h3>
+                        {!isPro && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white">
+                            PRO
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-zinc-500">Hourly, daily, weekly</p>
+                    </div>
+                    {isPro ? (
+                      <Plus className="w-4 h-4 text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    ) : (
+                      <Crown className="w-4 h-4 text-violet-400" />
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Integrations */}
+            <div>
+              <button
+                onClick={() => toggleCategory('integrations')}
+                className="flex items-center gap-2 w-full text-xs font-medium text-zinc-500 uppercase tracking-wider mb-2 hover:text-zinc-400 transition-colors px-1"
+              >
+                <ChevronDown
+                  className={`w-3 h-3 transition-transform ${
+                    expandedCategories.integrations ? '' : '-rotate-90'
+                  }`}
+                />
+                <Puzzle className="w-3 h-3" />
+                Integrations
+              </button>
+              {expandedCategories.integrations && (
+                <div className="space-y-1">
+                  {/* Email - Free */}
+                  <div
+                    draggable
+                    onDragStart={(e) => onDragStart(e, 'email')}
+                    onClick={() => handleAddIntegrationNode('email')}
+                    className="group flex items-center gap-3 p-2.5 rounded-md cursor-grab bg-zinc-900/50 border border-transparent hover:border-rose-800/50 hover:bg-rose-950/20 active:cursor-grabbing transition-all"
+                  >
+                    <div className="text-rose-500">
+                      <Mail className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-medium text-zinc-200">Email</h3>
+                      <p className="text-xs text-zinc-500">Send emails</p>
+                    </div>
+                    <Plus className="w-4 h-4 text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                  {/* Google Sheets - Pro */}
+                  <div
+                    draggable={isPro}
+                    onDragStart={(e) => isPro && onDragStart(e, 'google-sheets')}
+                    onClick={() => handleAddIntegrationNode('google-sheets')}
+                    className={`group flex items-center gap-3 p-2.5 rounded-md border border-transparent transition-all ${
+                      isPro
+                        ? 'cursor-grab bg-zinc-900/50 hover:border-green-800/50 hover:bg-green-950/20 active:cursor-grabbing'
+                        : 'cursor-pointer bg-zinc-900/30 hover:bg-zinc-800/50'
+                    }`}
+                  >
+                    <GoogleSheetsLogo className="w-4 h-4" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-medium text-zinc-200">Google Sheets</h3>
+                        {!isPro && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white">
+                            PRO
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-zinc-500">Read/write rows</p>
+                    </div>
+                    {isPro ? (
+                      <Plus className="w-4 h-4 text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    ) : (
+                      <Crown className="w-4 h-4 text-violet-400" />
+                    )}
+                  </div>
+                  {/* Slack - Pro */}
+                  <div
+                    draggable={isPro}
+                    onDragStart={(e) => isPro && onDragStart(e, 'slack')}
+                    onClick={() => handleAddIntegrationNode('slack')}
+                    className={`group flex items-center gap-3 p-2.5 rounded-md border border-transparent transition-all ${
+                      isPro
+                        ? 'cursor-grab bg-zinc-900/50 hover:border-purple-800/50 hover:bg-purple-950/20 active:cursor-grabbing'
+                        : 'cursor-pointer bg-zinc-900/30 hover:bg-zinc-800/50'
+                    }`}
+                  >
+                    <SlackLogo className="w-4 h-4" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-medium text-zinc-200">Slack</h3>
+                        {!isPro && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white">
+                            PRO
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-zinc-500">Send messages</p>
+                    </div>
+                    {isPro ? (
+                      <Plus className="w-4 h-4 text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    ) : (
+                      <Crown className="w-4 h-4 text-violet-400" />
+                    )}
+                  </div>
+                  {/* Notion - Pro */}
+                  <div
+                    draggable={isPro}
+                    onDragStart={(e) => isPro && onDragStart(e, 'notion')}
+                    onClick={() => handleAddIntegrationNode('notion')}
+                    className={`group flex items-center gap-3 p-2.5 rounded-md border border-transparent transition-all ${
+                      isPro
+                        ? 'cursor-grab bg-zinc-900/50 hover:border-zinc-700/50 hover:bg-zinc-800/50 active:cursor-grabbing'
+                        : 'cursor-pointer bg-zinc-900/30 hover:bg-zinc-800/50'
+                    }`}
+                  >
+                    <NotionLogo className="w-4 h-4 text-zinc-300" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-medium text-zinc-200">Notion</h3>
+                        {!isPro && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white">
+                            PRO
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-zinc-500">Create pages</p>
+                    </div>
+                    {isPro ? (
+                      <Plus className="w-4 h-4 text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    ) : (
+                      <Crown className="w-4 h-4 text-violet-400" />
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Logic Blocks */}
+            <div>
+              <button
+                onClick={() => toggleCategory('logic')}
+                className="flex items-center gap-2 w-full text-xs font-medium text-zinc-500 uppercase tracking-wider mb-2 hover:text-zinc-400 transition-colors px-1"
+              >
+                <ChevronDown
+                  className={`w-3 h-3 transition-transform ${
+                    expandedCategories.logic ? '' : '-rotate-90'
+                  }`}
+                />
+                <GitBranch className="w-3 h-3" />
+                Logic
+              </button>
+              {expandedCategories.logic && (
+                <div className="space-y-1">
+                  {/* Condition */}
+                  <div
+                    draggable={isPro}
+                    onDragStart={(e) => isPro && onDragStart(e, 'condition')}
+                    onClick={handleAddConditionNode}
+                    className={`group flex items-center gap-3 p-2.5 rounded-md border border-transparent transition-all ${
+                      isPro
+                        ? 'cursor-grab bg-zinc-900/50 hover:border-purple-800/50 hover:bg-purple-950/20 active:cursor-grabbing'
+                        : 'cursor-pointer bg-zinc-900/30 hover:bg-zinc-800/50'
+                    }`}
+                  >
+                    <div className="text-purple-500">
+                      <GitBranch className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-medium text-zinc-200">Condition</h3>
+                        {!isPro && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white">
+                            PRO
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-zinc-500">If/else branching</p>
+                    </div>
+                    {isPro ? (
+                      <Plus className="w-4 h-4 text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    ) : (
+                      <Crown className="w-4 h-4 text-violet-400" />
+                    )}
+                  </div>
+                  {/* Transform */}
+                  <div
+                    draggable={isPro}
+                    onDragStart={(e) => isPro && onDragStart(e, 'transform')}
+                    onClick={handleAddTransformNode}
+                    className={`group flex items-center gap-3 p-2.5 rounded-md border border-transparent transition-all ${
+                      isPro
+                        ? 'cursor-grab bg-zinc-900/50 hover:border-cyan-800/50 hover:bg-cyan-950/20 active:cursor-grabbing'
+                        : 'cursor-pointer bg-zinc-900/30 hover:bg-zinc-800/50'
+                    }`}
+                  >
+                    <div className="text-cyan-500">
+                      <Code2 className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-medium text-zinc-200">Transform</h3>
+                        {!isPro && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white">
+                            PRO
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-zinc-500">Custom JavaScript</p>
+                    </div>
+                    {isPro ? (
+                      <Plus className="w-4 h-4 text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    ) : (
+                      <Crown className="w-4 h-4 text-violet-400" />
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Text Models */}
             {textModels.length > 0 && (
               <div>

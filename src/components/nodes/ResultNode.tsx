@@ -337,10 +337,13 @@ const ResultNode = ({ data, selected, id, ...props }: NodeProps) => {
   return (
     <div
       className={`
-        group relative w-[320px] rounded-xl
+        group relative w-[320px] rounded-xl overflow-visible
         border-2
-        transition-all duration-150
-        border-zinc-700 hover:border-zinc-600 bg-zinc-900
+        transition-all duration-200
+        ${selected 
+          ? 'border-emerald-500/70 bg-zinc-900 shadow-xl shadow-emerald-500/20 ring-2 ring-emerald-500/30 ring-offset-2 ring-offset-zinc-950' 
+          : 'border-zinc-700/80 hover:border-zinc-500/80 bg-zinc-900 hover:shadow-lg hover:shadow-zinc-800/30'
+        }
       `}
     >
       {/* Header */}
@@ -506,14 +509,14 @@ const ResultNode = ({ data, selected, id, ...props }: NodeProps) => {
       <Handle
         type="target"
         position={Position.Left}
-        className="!w-3 !h-3 !bg-emerald-600 !border-2 !border-emerald-400 hover:!bg-emerald-500 !transition-colors !z-50"
+        className="!w-4 !h-4 !bg-emerald-600 !border-2 !border-emerald-400 hover:!bg-emerald-500 hover:!scale-125 !transition-all !z-50"
       />
       
       {/* Output Handle (Right) - For chaining to next nodes */}
       <Handle
         type="source"
         position={Position.Right}
-        className="!w-3 !h-3 !bg-emerald-600 !border-2 !border-emerald-400 hover:!bg-emerald-500 !transition-colors !z-50"
+        className="!w-4 !h-4 !bg-emerald-600 !border-2 !border-emerald-400 hover:!bg-emerald-500 hover:!scale-125 !transition-all !z-50"
       />
     </div>
   );

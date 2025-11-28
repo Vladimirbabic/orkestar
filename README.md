@@ -47,11 +47,29 @@ npm install
 cp .env.example .env.local
 ```
 
-Edit `.env.local` and add your Supabase credentials:
+Edit `.env.local` and add your credentials:
 ```
+# Supabase
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+# App URL (for OAuth callbacks)
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Google OAuth (for Google Sheets integration)
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+
+# Slack OAuth
+SLACK_CLIENT_ID=your_slack_client_id
+SLACK_CLIENT_SECRET=your_slack_client_secret
+
+# Notion OAuth
+NOTION_CLIENT_ID=your_notion_client_id
+NOTION_CLIENT_SECRET=your_notion_client_secret
 ```
+
+See [SETUP_INTEGRATIONS.md](SETUP_INTEGRATIONS.md) for detailed OAuth setup instructions.
 
 4. Set up Supabase database:
    - Run the migration in `supabase_migrations/create_contexts_table.sql` in your Supabase SQL editor

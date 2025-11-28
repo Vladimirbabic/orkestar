@@ -60,10 +60,15 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   background: var(--background);
   color: var(--foreground);
   overflow: hidden;
+}
+
+/* Geist Mono for code blocks */
+code, pre, .font-mono {
+  font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 }
 
 /* React Flow Customization */
@@ -273,6 +278,7 @@ body {
 
 .react-flow__node {
   contain: layout style;
+  overflow: visible !important;
 }
 
 /* Optimize media elements */
@@ -282,11 +288,17 @@ video {
   content-visibility: auto;
 }
 
-/* Prevent layout thrash on node updates */
+/* Prevent layout thrash on node updates - removed paint containment to allow handles to show */
 .react-flow__node-aiNode,
-.react-flow__node-resultNode {
-  contain: layout style paint;
+.react-flow__node-resultNode,
+.react-flow__node-webhookNode,
+.react-flow__node-scheduleNode,
+.react-flow__node-conditionNode,
+.react-flow__node-transformNode,
+.react-flow__node-integrationNode {
+  contain: layout style;
   will-change: transform;
+  overflow: visible !important;
 }
 
 /* GPU acceleration for animations */

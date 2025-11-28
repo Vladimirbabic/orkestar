@@ -12,6 +12,7 @@ import {
 import { getDefaultSubModel, getSubModelLabel } from '@/lib/modelConfig';
 
 export type AIModel = 'openai' | 'gemini' | 'stable-diffusion' | 'elevenlabs' | 'custom' | 'supadata';
+export type TriggerType = 'webhook';
 
 // Sub-models for each provider
 export type OpenAIModel = 'gpt-5.1';
@@ -46,10 +47,82 @@ export interface ResultNodeData {
   [key: string]: unknown; // Index signature for compatibility
 }
 
+export interface WebhookNodeData {
+  label: string;
+  webhookId?: string;
+  webhookUrl?: string;
+  description?: string;
+  lastTriggered?: string;
+  isActive?: boolean;
+  [key: string]: unknown;
+}
+
+export interface ScheduleNodeData {
+  label: string;
+  scheduleType: 'interval' | 'cron';
+  intervalMinutes?: number;
+  cronExpression?: string;
+  timezone?: string;
+  isActive?: boolean;
+  lastRun?: string;
+  nextRun?: string;
+  [key: string]: unknown;
+}
+
+export interface ConditionNodeData {
+  label: string;
+  field: string;
+  operator: 'equals' | 'not_equals' | 'contains' | 'not_contains' | 'greater' | 'less' | 'is_empty' | 'is_not_empty';
+  value: string;
+  [key: string]: unknown;
+}
+
+export interface TransformNodeData {
+  label: string;
+  code: string;
+  description?: string;
+  [key: string]: unknown;
+}
+
+export type IntegrationType = 'email' | 'google-sheets' | 'slack' | 'notion' | 'discord' | 'airtable';
+
+export interface IntegrationNodeData {
+  label: string;
+  integrationType: IntegrationType;
+  action: string;
+  config: Record<string, unknown>;
+  isConnected?: boolean;
+  accountName?: string;
+  [key: string]: unknown;
+}
+
+export interface AgentStep {
+  id: string;
+  action: string;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  result?: string;
+  duration?: number;
+}
+
+export interface AgentNodeData {
+  label: string;
+  objective: string;
+  model: 'openai' | 'gemini';
+  maxSteps: number;
+  temperature: number;
+  steps: AgentStep[];
+  isRunning?: boolean;
+  finalResult?: string;
+  tools: string[];
+  [key: string]: unknown;
+}
+
+export type AnyNodeData = NodeData | ResultNodeData | WebhookNodeData | ScheduleNodeData | ConditionNodeData | TransformNodeData | IntegrationNodeData | AgentNodeData;
+
 interface WorkflowState {
-  nodes: Node<NodeData | ResultNodeData>[];
+  nodes: Node<AnyNodeData>[];
   edges: Edge[];
-  selectedNode: Node<NodeData | ResultNodeData> | null;
+  selectedNode: Node<AnyNodeData> | null;
   settingsNodeId: string | null; // ID of node whose settings panel is open
   currentWorkflowId: string | null;
   currentWorkflowName: string;
@@ -58,13 +131,19 @@ interface WorkflowState {
   onConnect: (connection: Connection) => void;
   addNode: (type: AIModel, position: { x: number; y: number }) => void;
   addResultNode: (position: { x: number; y: number }) => void;
-  updateNodeData: (nodeId: string, data: Partial<NodeData | ResultNodeData>) => void;
-  setSelectedNode: (node: Node<NodeData | ResultNodeData> | null) => void;
+  addWebhookNode: (position: { x: number; y: number }) => void;
+  addScheduleNode: (position: { x: number; y: number }) => void;
+  addConditionNode: (position: { x: number; y: number }) => void;
+  addTransformNode: (position: { x: number; y: number }) => void;
+  addIntegrationNode: (integrationType: IntegrationType, position: { x: number; y: number }) => void;
+  addAgentNode: (position: { x: number; y: number }) => void;
+  updateNodeData: (nodeId: string, data: Partial<AnyNodeData>) => void;
+  setSelectedNode: (node: Node<AnyNodeData> | null) => void;
   setSettingsNodeId: (nodeId: string | null) => void;
   deleteNode: (nodeId: string) => void;
   duplicateNode: (nodeId: string) => void;
   setWorkflowName: (name: string) => void;
-  loadWorkflow: (nodes: Node<NodeData | ResultNodeData>[], edges: Edge[]) => void;
+  loadWorkflow: (nodes: Node<AnyNodeData>[], edges: Edge[]) => void;
   clearWorkflow: () => void;
 }
 
@@ -85,7 +164,7 @@ const generateNodeId = () => {
 };
 
 // Reset counter based on existing node IDs to avoid duplicates
-const resetNodeIdCounter = (nodes: Node<NodeData | ResultNodeData>[]) => {
+const resetNodeIdCounter = (nodes: Node<AnyNodeData>[]) => {
   if (nodes.length === 0) {
     nodeIdCounter = 0;
     return;
@@ -104,9 +183,9 @@ const resetNodeIdCounter = (nodes: Node<NodeData | ResultNodeData>[]) => {
 };
 
 // Ensure all node IDs are unique
-const ensureUniqueNodeIds = (nodes: Node<NodeData | ResultNodeData>[]): Node<NodeData | ResultNodeData>[] => {
+const ensureUniqueNodeIds = (nodes: Node<AnyNodeData>[]): Node<AnyNodeData>[] => {
   const seenIds = new Set<string>();
-  const uniqueNodes: Node<NodeData | ResultNodeData>[] = [];
+  const uniqueNodes: Node<AnyNodeData>[] = [];
   
   // First, find the maximum ID to start generating new IDs from
   const existingIds = nodes
@@ -192,6 +271,120 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     set({ nodes: [...get().nodes, newNode] });
   },
 
+  addWebhookNode: (position) => {
+    const webhookId = `wh_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const newNode: Node<WebhookNodeData> = {
+      id: generateNodeId(),
+      type: 'webhookNode',
+      position,
+      data: {
+        label: 'Webhook Trigger',
+        webhookId,
+        webhookUrl: `${typeof window !== 'undefined' ? window.location.origin : ''}/api/webhooks/${webhookId}`,
+        description: 'Trigger workflow via HTTP request',
+        isActive: true,
+      },
+    };
+    set({ nodes: [...get().nodes, newNode] });
+  },
+
+  addScheduleNode: (position) => {
+    const newNode: Node<ScheduleNodeData> = {
+      id: generateNodeId(),
+      type: 'scheduleNode',
+      position,
+      data: {
+        label: 'Schedule Trigger',
+        scheduleType: 'interval',
+        intervalMinutes: 1440, // Daily by default
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        isActive: false,
+      },
+    };
+    set({ nodes: [...get().nodes, newNode] });
+  },
+
+  addConditionNode: (position) => {
+    const newNode: Node<ConditionNodeData> = {
+      id: generateNodeId(),
+      type: 'conditionNode',
+      position,
+      data: {
+        label: 'Condition',
+        field: '{{output}}',
+        operator: 'contains',
+        value: '',
+      },
+    };
+    set({ nodes: [...get().nodes, newNode] });
+  },
+
+  addTransformNode: (position) => {
+    const newNode: Node<TransformNodeData> = {
+      id: generateNodeId(),
+      type: 'transformNode',
+      position,
+      data: {
+        label: 'Transform',
+        code: '// Transform the input data\nreturn input;',
+        description: 'Custom JavaScript',
+      },
+    };
+    set({ nodes: [...get().nodes, newNode] });
+  },
+
+  addIntegrationNode: (integrationType, position) => {
+    const integrationLabels: Record<IntegrationType, string> = {
+      'email': 'Send Email',
+      'google-sheets': 'Google Sheets',
+      'slack': 'Slack',
+      'notion': 'Notion',
+      'discord': 'Discord',
+      'airtable': 'Airtable',
+    };
+    const defaultActions: Record<IntegrationType, string> = {
+      'email': 'send',
+      'google-sheets': 'append',
+      'slack': 'send_message',
+      'notion': 'create_page',
+      'discord': 'send_message',
+      'airtable': 'create_record',
+    };
+
+    const newNode: Node<IntegrationNodeData> = {
+      id: generateNodeId(),
+      type: 'integrationNode',
+      position,
+      data: {
+        label: integrationLabels[integrationType],
+        integrationType,
+        action: defaultActions[integrationType],
+        config: {},
+        isConnected: false,
+      },
+    };
+    set({ nodes: [...get().nodes, newNode] });
+  },
+
+  addAgentNode: (position) => {
+    const newNode: Node<AgentNodeData> = {
+      id: generateNodeId(),
+      type: 'agentNode',
+      position,
+      data: {
+        label: 'AI Agent',
+        objective: '',
+        model: 'openai',
+        maxSteps: 10,
+        temperature: 0.7,
+        steps: [],
+        tools: ['web_search', 'summarize', 'analyze', 'generate'],
+        isRunning: false,
+      },
+    };
+    set({ nodes: [...get().nodes, newNode] });
+  },
+
   updateNodeData: (nodeId, data) => {
     const nodes = get().nodes;
     const nodeIndex = nodes.findIndex((n) => n.id === nodeId);
@@ -233,7 +426,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   duplicateNode: (nodeId) => {
     const node = get().nodes.find((n) => n.id === nodeId);
     if (node) {
-      const newNode: Node<NodeData | ResultNodeData> = {
+      const newNode: Node<AnyNodeData> = {
         ...node,
         id: generateNodeId(),
         position: {

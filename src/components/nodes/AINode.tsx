@@ -6,8 +6,6 @@ import { NodeData, AIModel, SubModel, useWorkflowStore } from '@/store/workflowS
 import { useWorkflowRunnerContext } from '@/context/WorkflowRunnerContext';
 import { modelVariants, getDefaultSubModel, getSubModelLabel } from '@/lib/modelConfig';
 import {
-  Sparkles,
-  Zap,
   Image as ImageIcon,
   Settings,
   Play,
@@ -16,21 +14,25 @@ import {
   ChevronDown,
   ArrowLeftCircle,
   X,
-  Volume2,
   Copy,
-  Database,
   Upload,
   Trash2,
 } from 'lucide-react';
 import { BorderBeam } from '@/components/ui/registry/magicui/border-beam';
+import {
+  OpenAILogo,
+  GeminiLogo,
+  ElevenLabsLogo,
+  SupadataLogo,
+} from '@/components/icons/BrandLogos';
 
 const modelIcons: Record<AIModel, React.ReactNode> = {
-  openai: <Sparkles className="w-3.5 h-3.5" />,
-  gemini: <Zap className="w-3.5 h-3.5" />,
+  openai: <OpenAILogo className="w-3.5 h-3.5" />,
+  gemini: <GeminiLogo className="w-3.5 h-3.5" />,
   'stable-diffusion': <ImageIcon className="w-3.5 h-3.5" />,
-  elevenlabs: <Volume2 className="w-3.5 h-3.5" />,
+  elevenlabs: <ElevenLabsLogo className="w-3.5 h-3.5" />,
   custom: <Settings className="w-3.5 h-3.5" />,
-  supadata: <Database className="w-3.5 h-3.5" />,
+  supadata: <SupadataLogo className="w-3.5 h-3.5" />,
 };
 
 const modelLabels: Record<AIModel, string> = {
@@ -196,15 +198,17 @@ const AINode = ({ data, selected, id, ...props }: NodeProps) => {
   };
 
   return (
-    <div className="relative">
+    <div className="relative overflow-visible">
       <div
         className={`
           group relative w-[320px] rounded-xl
           overflow-visible
-          transition-all duration-300
+          transition-all duration-200
           ${nodeData.isRunning 
             ? 'border-0 bg-zinc-900' 
-            : 'border-2 border-zinc-700 hover:border-zinc-600 bg-zinc-900'
+            : selected
+              ? 'border-2 border-emerald-500/70 bg-zinc-900 shadow-xl shadow-emerald-500/20 ring-2 ring-emerald-500/30 ring-offset-2 ring-offset-zinc-950'
+              : 'border-2 border-zinc-700/80 hover:border-zinc-500/80 bg-zinc-900 hover:shadow-lg hover:shadow-zinc-800/30'
           }
         `}
       >
@@ -520,7 +524,7 @@ const AINode = ({ data, selected, id, ...props }: NodeProps) => {
       <Handle
         type="target"
         position={Position.Left}
-        className={`!w-3 !h-3 !border-2 !transition-colors !z-50 ${
+        className={`!w-4 !h-4 !border-2 !transition-all !z-50 hover:!scale-125 ${
           hasIncomingConnection 
             ? '!bg-blue-500 !border-blue-400' 
             : '!bg-zinc-700 !border-zinc-500 hover:!bg-emerald-500 hover:!border-emerald-400'
@@ -529,7 +533,7 @@ const AINode = ({ data, selected, id, ...props }: NodeProps) => {
       <Handle
         type="source"
         position={Position.Right}
-        className="!w-3 !h-3 !bg-zinc-700 !border-2 !border-zinc-500 hover:!bg-emerald-500 hover:!border-emerald-400 !transition-colors !z-50"
+        className="!w-4 !h-4 !bg-zinc-700 !border-2 !border-zinc-500 hover:!bg-emerald-500 hover:!border-emerald-400 !transition-all !z-50 hover:!scale-125"
       />
     </div>
 

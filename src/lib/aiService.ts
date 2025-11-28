@@ -1,9 +1,11 @@
 import { AIModel } from '@/store/workflowStore';
+import { getCurrentUserIdSync } from './supabase';
 
 interface AIResponse {
   success: boolean;
   result?: string;
   error?: string;
+  upgradeRequired?: boolean;
 }
 
 export async function runAIModel(
@@ -27,11 +29,18 @@ export async function runAIModel(
   }
 
   try {
+    const userId = getCurrentUserIdSync();
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    
+    if (userId) {
+      headers['x-user-id'] = userId;
+    }
+    
     const response = await fetch('/api/ai', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify({
         model,
         subModel,
@@ -48,7 +57,11 @@ export async function runAIModel(
     const data = await response.json();
 
     if (!response.ok) {
-      return { success: false, error: data.error || `API error: ${response.status}` };
+      return { 
+        success: false, 
+        error: data.error || `API error: ${response.status}`,
+        upgradeRequired: data.upgradeRequired,
+      };
     }
 
     return { success: true, result: data.result };

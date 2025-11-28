@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { listContexts, deleteContext, saveContext, type Context } from '@/lib/contextService';
 import { Plus, FileText, Trash2, Edit, Calendar, X, Save, Settings } from 'lucide-react';
+import { useSubscription } from '@/context/SubscriptionContext';
+import { UpgradePrompt } from '@/components/UpgradePrompt';
 
 export default function ContextsPage() {
   const router = useRouter();
@@ -18,6 +20,8 @@ export default function ContextsPage() {
     system_prompt: '',
     temperature: 0.7,
   });
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
+  const { canCreateContext } = useSubscription();
 
   useEffect(() => {
     loadContexts();
@@ -36,6 +40,10 @@ export default function ContextsPage() {
   };
 
   const handleCreateContext = () => {
+    if (!canCreateContext()) {
+      setShowUpgradePrompt(true);
+      return;
+    }
     setEditingContext(null);
     setFormData({
       name: '',
@@ -112,6 +120,14 @@ export default function ContextsPage() {
 
   return (
     <div className="min-h-screen bg-zinc-950">
+      {/* Upgrade Prompt */}
+      {showUpgradePrompt && (
+        <UpgradePrompt 
+          feature="contexts" 
+          onClose={() => setShowUpgradePrompt(false)} 
+        />
+      )}
+      
       {/* Header */}
       <div className="border-b border-zinc-800 bg-zinc-900/50">
         <div className="max-w-7xl mx-auto px-6 py-4">

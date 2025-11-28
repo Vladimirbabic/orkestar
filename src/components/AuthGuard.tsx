@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Loader2 } from 'lucide-react';
 
 // Routes that don't require authentication
-const PUBLIC_ROUTES = ['/login'];
+const PUBLIC_ROUTES = ['/login', '/pricing'];
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -25,11 +25,11 @@ export function AuthGuard({ children }: AuthGuardProps) {
     if (!isAuthenticated && !isPublicRoute) {
       // Redirect to login if not authenticated and trying to access protected route
       router.push('/login');
-    } else if (isAuthenticated && isPublicRoute) {
-      // Redirect to home if authenticated and trying to access login page
+    } else if (isAuthenticated && pathname === '/login') {
+      // Only redirect from login page, not pricing
       router.push('/');
     }
-  }, [isAuthenticated, isLoading, isPublicRoute, router]);
+  }, [isAuthenticated, isLoading, isPublicRoute, pathname, router]);
 
   // Show loading state while checking auth
   if (isLoading) {
@@ -53,7 +53,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
   }
 
   // Show nothing while redirecting authenticated users from login
-  if (isAuthenticated && isPublicRoute) {
+  if (isAuthenticated && pathname === '/login') {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-zinc-500" />
