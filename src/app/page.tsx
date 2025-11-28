@@ -3,13 +3,16 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { listWorkflows, deleteWorkflow, type Workflow } from '@/lib/workflowService';
-import { Plus, Workflow as WorkflowIcon, Trash2, Edit, Calendar, FileText } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { Plus, Workflow as WorkflowIcon, Trash2, Calendar, FileText, LogOut, User } from 'lucide-react';
 
 export default function WorkflowsPage() {
   const router = useRouter();
+  const { user, signOut } = useAuth();
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   useEffect(() => {
     loadWorkflows();
@@ -90,6 +93,44 @@ export default function WorkflowsPage() {
                 <Plus className="w-4 h-4" />
                 New Workflow
               </button>
+              
+              {/* User Menu */}
+              <div className="relative">
+                <button
+                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 hover:bg-zinc-700 transition-colors"
+                >
+                  <div className="w-6 h-6 rounded-full bg-emerald-600 flex items-center justify-center">
+                    <User className="w-3.5 h-3.5 text-white" />
+                  </div>
+                  <span className="text-sm max-w-[120px] truncate">{user?.email}</span>
+                </button>
+                
+                {isUserMenuOpen && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-40" 
+                      onClick={() => setIsUserMenuOpen(false)} 
+                    />
+                    <div className="absolute right-0 top-full mt-2 w-48 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl z-50 py-1">
+                      <div className="px-3 py-2 border-b border-zinc-700">
+                        <p className="text-xs text-zinc-500">Signed in as</p>
+                        <p className="text-sm text-zinc-200 truncate">{user?.email}</p>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          await signOut();
+                          router.push('/login');
+                        }}
+                        className="w-full px-3 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-700 flex items-center gap-2 transition-colors"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        Sign out
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>
