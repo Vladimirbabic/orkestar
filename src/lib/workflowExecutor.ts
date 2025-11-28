@@ -76,6 +76,7 @@ async function executeNodeCore(
       temperature: data.temperature,
       maxTokens: data.maxTokens,
       voiceId: data.voiceId,
+      images: data.images,
     });
     
     if (response.success && response.result) {

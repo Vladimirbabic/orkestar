@@ -23,6 +23,8 @@ import {
   Volume2,
   Copy,
   Database,
+  Upload,
+  Trash2,
 } from 'lucide-react';
 import { BorderBeam } from '@/components/ui/registry/magicui/border-beam';
 
@@ -75,6 +77,7 @@ const AINode = ({ data, selected, id, ...props }: NodeProps) => {
   const subModelDropdownRef = useRef<HTMLDivElement>(null);
   const settingsRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const styles = modelStyles[nodeData.model];
   const currentSubModel = nodeData.subModel || getDefaultSubModel(nodeData.model);
@@ -257,6 +260,52 @@ const AINode = ({ data, selected, id, ...props }: NodeProps) => {
     }
   };
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const imagePromises = Array.from(files).map((file) => {
+      return new Promise<string>((resolve, reject) => {
+        if (!file.type.startsWith('image/')) {
+          reject(new Error('File must be an image'));
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const result = event.target?.result;
+          if (typeof result === 'string') {
+            resolve(result);
+          } else {
+            reject(new Error('Failed to read image'));
+          }
+        };
+        reader.onerror = () => reject(new Error('Failed to read image'));
+        reader.readAsDataURL(file);
+      });
+    });
+
+    Promise.all(imagePromises)
+      .then((newImages) => {
+        const currentImages = nodeData.images || [];
+        updateNodeData(id, { images: [...currentImages, ...newImages] });
+      })
+      .catch((error) => {
+        console.error('Error uploading images:', error);
+      });
+
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleRemoveImage = (index: number) => {
+    const currentImages = nodeData.images || [];
+    const newImages = currentImages.filter((_, i) => i !== index);
+    updateNodeData(id, { images: newImages.length > 0 ? newImages : undefined });
+  };
+
   const handleRunNode = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (nodeData.isRunning || isWorkflowRunning) return;
@@ -405,6 +454,70 @@ const AINode = ({ data, selected, id, ...props }: NodeProps) => {
             <p className="text-[10px] text-blue-400/70 mt-1 px-1">
               ℹ️ Input from connected node will be automatically included
             </p>
+          )}
+        </div>
+      )}
+
+      {/* Image Upload Section - Hidden for ElevenLabs and Stable Diffusion */}
+      {nodeData.model !== 'elevenlabs' && nodeData.model !== 'stable-diffusion' && (
+        <div className="px-3 pb-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleImageUpload}
+            className="hidden"
+            onClick={(e) => e.stopPropagation()}
+          />
+          
+          {/* Upload Button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              fileInputRef.current?.click();
+            }}
+            className={`
+              w-full flex items-center justify-center gap-2 px-3 py-2
+              bg-zinc-950 border rounded-lg
+              text-xs text-zinc-400 hover:text-zinc-200
+              transition-all
+              border-zinc-800 hover:border-zinc-700
+              hover:bg-zinc-900
+            `}
+          >
+            <Upload className="w-3.5 h-3.5" />
+            <span>Upload Images</span>
+            {(nodeData.images && nodeData.images.length > 0) && (
+              <span className="ml-auto text-[10px] bg-zinc-800 px-1.5 py-0.5 rounded">
+                {nodeData.images.length}
+              </span>
+            )}
+          </button>
+
+          {/* Image Previews */}
+          {nodeData.images && nodeData.images.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {nodeData.images.map((image, index) => (
+                <div
+                  key={index}
+                  className="relative group"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <img
+                    src={image}
+                    alt={`Upload ${index + 1}`}
+                    className="w-16 h-16 object-cover rounded-lg border border-zinc-800"
+                  />
+                  <button
+                    onClick={() => handleRemoveImage(index)}
+                    className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="w-3 h-3 text-white" />
+                  </button>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       )}

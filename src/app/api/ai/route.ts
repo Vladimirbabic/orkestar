@@ -13,6 +13,7 @@ interface AIRequestBody {
   temperature?: number;
   maxTokens?: number;
   voiceId?: string;
+  images?: string[]; // Array of base64 data URLs
 }
 
 interface OpenAIOptions {
@@ -20,18 +21,21 @@ interface OpenAIOptions {
   systemPrompt?: string;
   temperature: number;
   maxTokens: number;
+  images?: string[];
 }
 
 interface GeminiOptions {
   subModel?: string;
   temperature: number;
   maxTokens: number;
+  images?: string[];
 }
 
 interface NanoBananaOptions {
   subModel?: string;
   systemPrompt?: string;
   temperature: number;
+  images?: string[];
 }
 
 interface ElevenLabsOptions {
@@ -50,7 +54,7 @@ interface OpenAIImageResponse {
 
 interface OpenAIMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
-  content: string;
+  content: string | Array<{ type: 'text' | 'image_url'; text?: string; image_url?: { url: string } }>;
   tool_calls?: Array<{ id: string; type: string }>;
   tool_call_id?: string;
 }
@@ -100,7 +104,8 @@ export async function POST(request: NextRequest) {
       systemPrompt, 
       temperature = DEFAULT_TEMPERATURE, 
       maxTokens = DEFAULT_MAX_TOKENS, 
-      voiceId 
+      voiceId,
+      images 
     } = body;
 
     if (!apiKey) {
@@ -116,14 +121,14 @@ export async function POST(request: NextRequest) {
 
     switch (model) {
       case 'openai':
-        result = await callOpenAI(prompt, apiKey, { subModel, systemPrompt, temperature, maxTokens });
+        result = await callOpenAI(prompt, apiKey, { subModel, systemPrompt, temperature, maxTokens, images });
         break;
       case 'gemini':
         // Check if subModel is a nano-banana (image generation) model
         if (subModel === 'gemini-2.5-flash-image' || subModel === 'gemini-2.0-flash-exp') {
-          result = await callNanoBanana(prompt, apiKey, { subModel, systemPrompt, temperature });
+          result = await callNanoBanana(prompt, apiKey, { subModel, systemPrompt, temperature, images });
         } else {
-          result = await callGemini(prompt, apiKey, { subModel, temperature, maxTokens });
+          result = await callGemini(prompt, apiKey, { subModel, temperature, maxTokens, images });
         }
         break;
       case 'elevenlabs':
@@ -227,9 +232,32 @@ async function callOpenAI(
     const strictSystemPrompt = `${options.systemPrompt}\n\nCRITICAL: Follow the system instructions EXACTLY. Do NOT add any conversational phrases like "Sure", "Here is", "I'll", etc. Do NOT add explanations or extra text. Only provide the direct output requested.`;
     messages.push({ role: 'system', content: strictSystemPrompt });
   }
-  messages.push({ role: 'user', content: prompt });
+  
+  // Build user message with images if provided
+  if (options.images && options.images.length > 0) {
+    const content: Array<{ type: 'text' | 'image_url'; text?: string; image_url?: { url: string } }> = [
+      { type: 'text', text: prompt }
+    ];
+    
+    // Add images to content
+    for (const image of options.images) {
+      content.push({
+        type: 'image_url',
+        image_url: { url: image }
+      });
+    }
+    
+    messages.push({ role: 'user', content });
+    
+    // When images are provided, use Chat Completions API with a vision-capable model
+    // Try gpt-4o first (best vision model), then gpt-4-turbo, then gpt-4-vision-preview
+    const visionModels = ['gpt-4o', 'gpt-4-turbo', 'gpt-4-vision-preview'];
+    return callOpenAIChatCompletions(messages, apiKey, options, visionModels[0]);
+  } else {
+    messages.push({ role: 'user', content: prompt });
+  }
 
-  // Use Responses API for gpt-5.1 (latest model)
+  // Use Responses API for gpt-5.1 (latest model) when no images
   if (model === 'gpt-5.1') {
     return callOpenAIResponses(prompt, apiKey, options);
   }
@@ -414,6 +442,26 @@ async function callGemini(
   
   let lastError: Error | null = null;
   
+  // Build parts array with text and images
+  const parts: GeminiPart[] = [{ text: prompt }];
+  
+  if (options.images && options.images.length > 0) {
+    for (const imageDataUrl of options.images) {
+      // Extract base64 data and mime type from data URL
+      const match = imageDataUrl.match(/^data:([^;]+);base64,(.+)$/);
+      if (match) {
+        const mimeType = match[1];
+        const base64Data = match[2];
+        parts.push({
+          inlineData: {
+            mimeType: mimeType || 'image/png',
+            data: base64Data
+          }
+        });
+      }
+    }
+  }
+  
   for (const model of modelOptions) {
     try {
       const response = await fetch(
@@ -422,7 +470,7 @@ async function callGemini(
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            contents: [{ role: 'user', parts }],
             generationConfig: {
               temperature: options.temperature,
               maxOutputTokens: options.maxTokens,
@@ -489,6 +537,26 @@ async function callNanoBanana(
     finalPrompt = `${options.systemPrompt}\n\n${prompt}`;
   }
   
+  // Build parts array with text and images
+  const parts: GeminiPart[] = [{ text: finalPrompt }];
+  
+  if (options.images && options.images.length > 0) {
+    for (const imageDataUrl of options.images) {
+      // Extract base64 data and mime type from data URL
+      const match = imageDataUrl.match(/^data:([^;]+);base64,(.+)$/);
+      if (match) {
+        const mimeType = match[1];
+        const base64Data = match[2];
+        parts.push({
+          inlineData: {
+            mimeType: mimeType || 'image/png',
+            data: base64Data
+          }
+        });
+      }
+    }
+  }
+  
   let lastError: Error | null = null;
   
   for (const model of modelOptions) {
@@ -506,7 +574,7 @@ async function callNanoBanana(
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              contents: [{ role: 'user', parts: [{ text: finalPrompt }] }],
+              contents: [{ role: 'user', parts }],
               generationConfig: { temperature: options.temperature, ...variant },
             }),
           }

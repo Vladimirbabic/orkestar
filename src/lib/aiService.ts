@@ -16,9 +16,10 @@ export async function runAIModel(
     temperature?: number;
     maxTokens?: number;
     voiceId?: string;
+    images?: string[];
   } = {}
 ): Promise<AIResponse> {
-  const { subModel, systemPrompt, temperature = 0.7, maxTokens = 2048, voiceId } = options;
+  const { subModel, systemPrompt, temperature = 0.7, maxTokens = 2048, voiceId, images } = options;
 
   // Only supported models
   if (!['openai', 'gemini', 'stable-diffusion', 'elevenlabs', 'custom', 'supadata'].includes(model)) {
@@ -40,6 +41,7 @@ export async function runAIModel(
         temperature,
         maxTokens,
         voiceId,
+        images,
       }),
     });
 

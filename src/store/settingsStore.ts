@@ -87,7 +87,18 @@ export const useSettingsStore = create<SettingsState>()(
       loadApiKeysFromSupabase: async () => {
         try {
           const keys = await loadApiKeysFromDB();
-          set({ apiKeys: keys });
+          const localKeys = get().apiKeys;
+          
+          // Merge: Supabase keys take priority, but keep local keys that aren't in Supabase
+          const mergedKeys = { ...localKeys, ...keys };
+          
+          // Only update if we got keys from Supabase, otherwise keep local
+          if (Object.keys(keys).length > 0) {
+            set({ apiKeys: mergedKeys });
+          } else if (Object.keys(localKeys).length > 0) {
+            // If Supabase is empty but we have local keys, sync them up
+            await saveApiKeys(localKeys);
+          }
         } catch (error) {
           console.error('Failed to load API keys from Supabase:', error);
           // Don't throw - just log, keep local keys

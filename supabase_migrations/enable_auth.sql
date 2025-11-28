@@ -61,3 +61,4 @@ CREATE POLICY "Users can update own api_keys" ON api_keys
 CREATE POLICY "Users can delete own api_keys" ON api_keys
   FOR DELETE USING (auth.uid()::text = user_id);
 
+

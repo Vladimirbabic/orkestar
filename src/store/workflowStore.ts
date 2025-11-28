@@ -34,6 +34,7 @@ export interface NodeData {
   output?: string;
   contextId?: string; // Selected context template ID
   voiceId?: string; // ElevenLabs voice ID
+  images?: string[]; // Array of base64 image data URLs
   [key: string]: unknown; // Index signature for compatibility
 }
 
