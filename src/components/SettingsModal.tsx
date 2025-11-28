@@ -183,9 +183,9 @@ export default function SettingsModal() {
 
         {/* Info banner */}
         <div className="mx-4 mt-4 p-3 rounded-md bg-zinc-900 border border-zinc-800 flex items-start gap-3">
-          <AlertCircle className="w-4 h-4 text-zinc-500 mt-0.5 flex-shrink-0" />
+          <AlertCircle className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
           <p className="text-xs text-zinc-400">
-            API keys are stored locally in your browser. Only models with configured keys will appear in the sidebar.
+            API keys are securely saved to your account and will be available when you sign in on any device.
           </p>
         </div>
 

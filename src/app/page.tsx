@@ -4,15 +4,19 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { listWorkflows, deleteWorkflow, type Workflow } from '@/lib/workflowService';
 import { useAuth } from '@/context/AuthContext';
-import { Plus, Workflow as WorkflowIcon, Trash2, Calendar, FileText, LogOut, User } from 'lucide-react';
+import { useSettingsStore } from '@/store/settingsStore';
+import SettingsModal from '@/components/SettingsModal';
+import { Plus, Workflow as WorkflowIcon, Trash2, Calendar, FileText, LogOut, User, Key } from 'lucide-react';
 
 export default function WorkflowsPage() {
   const router = useRouter();
   const { user, signOut } = useAuth();
+  const { openSettings, getEnabledModels } = useSettingsStore();
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const enabledModelsCount = getEnabledModels().length;
 
   useEffect(() => {
     loadWorkflows();
@@ -65,6 +69,8 @@ export default function WorkflowsPage() {
 
   return (
     <div className="min-h-screen bg-zinc-950">
+      {/* Settings Modal */}
+      <SettingsModal />
       {/* Header */}
       <div className="border-b border-zinc-800 bg-zinc-900/50">
         <div className="max-w-7xl mx-auto px-6 py-4">
@@ -112,21 +118,36 @@ export default function WorkflowsPage() {
                       className="fixed inset-0 z-40" 
                       onClick={() => setIsUserMenuOpen(false)} 
                     />
-                    <div className="absolute right-0 top-full mt-2 w-48 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl z-50 py-1">
+                    <div className="absolute right-0 top-full mt-2 w-56 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl z-50 py-1">
                       <div className="px-3 py-2 border-b border-zinc-700">
                         <p className="text-xs text-zinc-500">Signed in as</p>
                         <p className="text-sm text-zinc-200 truncate">{user?.email}</p>
                       </div>
                       <button
-                        onClick={async () => {
-                          await signOut();
-                          router.push('/login');
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          openSettings();
                         }}
-                        className="w-full px-3 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-700 flex items-center gap-2 transition-colors"
+                        className="w-full px-3 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-700 flex items-center justify-between transition-colors"
                       >
-                        <LogOut className="w-4 h-4" />
-                        Sign out
+                        <span className="flex items-center gap-2">
+                          <Key className="w-4 h-4" />
+                          API Keys
+                        </span>
+                        <span className="text-xs text-zinc-500">{enabledModelsCount} configured</span>
                       </button>
+                      <div className="border-t border-zinc-700 mt-1 pt-1">
+                        <button
+                          onClick={async () => {
+                            await signOut();
+                            router.push('/login');
+                          }}
+                          className="w-full px-3 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-700 flex items-center gap-2 transition-colors"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          Sign out
+                        </button>
+                      </div>
                     </div>
                   </>
                 )}
