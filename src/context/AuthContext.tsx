@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase, signIn as supabaseSignIn, signUp as supabaseSignUp, signOut as supabaseSignOut, getCurrentUser } from '@/lib/supabase';
+import { useSettingsStore } from '@/store/settingsStore';
 
 interface AuthContextType {
   user: User | null;
@@ -29,6 +30,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Cache user ID for sync operations
         if (currentUser?.id) {
           localStorage.setItem('supabase_user_id', currentUser.id);
+          // Load API keys from Supabase for this user
+          await useSettingsStore.getState().loadApiKeysFromSupabase();
         } else {
           localStorage.removeItem('supabase_user_id');
         }
@@ -43,14 +46,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Listen for auth changes
     if (supabase) {
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
         const newUser = session?.user || null;
         setUser(newUser);
         
         if (newUser?.id) {
           localStorage.setItem('supabase_user_id', newUser.id);
+          // Load API keys when user signs in
+          await useSettingsStore.getState().loadApiKeysFromSupabase();
         } else {
           localStorage.removeItem('supabase_user_id');
+          // Clear API keys when user signs out
+          useSettingsStore.setState({ apiKeys: {} });
         }
       });
 
