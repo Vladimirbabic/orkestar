@@ -265,3 +265,32 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Performance optimizations for canvas and media */
+.react-flow__viewport {
+  will-change: transform;
+}
+
+.react-flow__node {
+  contain: layout style;
+}
+
+/* Optimize media elements */
+img[loading="lazy"],
+audio,
+video {
+  content-visibility: auto;
+}
+
+/* Prevent layout thrash on node updates */
+.react-flow__node-aiNode,
+.react-flow__node-resultNode {
+  contain: layout style paint;
+  will-change: transform;
+}
+
+/* GPU acceleration for animations */
+.animate-spin,
+.animate-pulse {
+  will-change: transform, opacity;
+}

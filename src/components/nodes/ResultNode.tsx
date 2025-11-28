@@ -1,8 +1,8 @@
 'use client';
 
-import { memo, useMemo, useCallback, useEffect } from 'react';
+import { memo, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
-import { FileOutput, Copy, Download, Check, Loader2, ArrowRight, Files } from 'lucide-react';
+import { FileOutput, Copy, Download, Check, Loader2, ArrowRight, Files, Play, Pause } from 'lucide-react';
 import { useState } from 'react';
 import { useWorkflowStore } from '@/store/workflowStore';
 
@@ -16,6 +16,8 @@ export interface ResultNodeData {
 const ResultNode = ({ data, selected, id, ...props }: NodeProps) => {
   const nodeData = data as unknown as ResultNodeData;
   const [copied, setCopied] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
   const duplicateNode = useWorkflowStore((state) => state.duplicateNode);
 
   // Extract only the actual response content, removing metadata
@@ -310,6 +312,28 @@ const ResultNode = ({ data, selected, id, ...props }: NodeProps) => {
     }
   }, [displayResult]);
 
+  const handlePlayPause = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  }, [isPlaying]);
+
+  // Reset playing state when audio ends
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (audio) {
+      const handleEnded = () => setIsPlaying(false);
+      audio.addEventListener('ended', handleEnded);
+      return () => audio.removeEventListener('ended', handleEnded);
+    }
+  }, [displayResult]);
+
   return (
     <div
       className={`
@@ -380,51 +404,49 @@ const ResultNode = ({ data, selected, id, ...props }: NodeProps) => {
           <div className="space-y-2">
             {/* Check if result is an audio data URL */}
             {displayResult.startsWith('data:audio/') ? (
-              <div className="space-y-2">
+              <div className="space-y-2" style={{ contain: 'content' }}>
                 <audio 
-                  controls 
-                  autoPlay
+                  ref={audioRef}
                   src={displayResult.trim()} 
-                  className="w-full"
-                  style={{ maxHeight: '100px' }}
-                  preload="auto"
-                >
-                  Your browser does not support the audio element.
-                </audio>
-                <div className="flex items-center justify-between">
-                  <a 
-                    href={displayResult.trim()} 
-                    download="audio.mp3"
-                    className="text-xs text-blue-400 hover:text-blue-300 underline"
-                  >
-                    Download audio
-                  </a>
+                  className="hidden"
+                  preload="metadata"
+                />
+                <div className="flex items-center gap-3 p-3 bg-zinc-800/50 rounded-lg border border-zinc-700/50">
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const audio = e.currentTarget.parentElement?.parentElement?.querySelector('audio') as HTMLAudioElement;
-                      if (audio) {
-                        if (audio.paused) {
-                          audio.play();
-                        } else {
-                          audio.pause();
-                        }
-                      }
-                    }}
-                    className="text-xs text-zinc-400 hover:text-zinc-300"
+                    onClick={handlePlayPause}
+                    className="w-10 h-10 rounded-full bg-emerald-500 hover:bg-emerald-400 flex items-center justify-center transition-colors"
                   >
-                    Play / Pause
+                    {isPlaying ? (
+                      <Pause className="w-5 h-5 text-white" />
+                    ) : (
+                      <Play className="w-5 h-5 text-white ml-0.5" />
+                    )}
                   </button>
+                  <div className="flex-1">
+                    <p className="text-sm text-zinc-200">Audio Generated</p>
+                    <p className="text-xs text-zinc-500">{isPlaying ? 'Playing...' : 'Click to play'}</p>
+                  </div>
                 </div>
+                <a 
+                  href={displayResult.trim()} 
+                  download="audio.mp3"
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-xs text-blue-400 hover:text-blue-300 underline"
+                >
+                  Download audio
+                </a>
               </div>
             ) : displayResult.match(/^https?:\/\/.+\.(jpg|jpeg|png|gif|webp)/i) || 
              displayResult.startsWith('data:image/') ||
              displayResult.match(/^https?:\/\/.*\.(blob|azure|s3|cloudfront)/i) ? (
-              <div className="space-y-2">
+              <div className="space-y-2" style={{ contain: 'content' }}>
                 <img 
                   src={displayResult.trim()} 
                   alt="Generated image" 
-                  className="w-full rounded-lg border border-zinc-800 max-h-[300px] object-contain bg-zinc-950"
+                  loading="lazy"
+                  decoding="async"
+                  className="w-full rounded-lg border border-zinc-800 max-h-[150px] object-contain bg-zinc-950"
+                  style={{ contentVisibility: 'auto' }}
                   onError={(e) => {
                     // Fallback to text if image fails to load
                     const img = e.currentTarget;
@@ -434,12 +456,13 @@ const ResultNode = ({ data, selected, id, ...props }: NodeProps) => {
                   }}
                 />
                 <div style={{ display: 'none' }} className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap break-words">
-                  {displayResult}
+                  {displayResult.substring(0, 100)}...
                 </div>
                 <a 
                   href={displayResult.trim()} 
                   target="_blank" 
                   rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
                   className="text-xs text-blue-400 hover:text-blue-300 underline"
                 >
                   Open full size

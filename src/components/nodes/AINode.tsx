@@ -497,7 +497,7 @@ const AINode = ({ data, selected, id, ...props }: NodeProps) => {
 
           {/* Image Previews */}
           {nodeData.images && nodeData.images.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-2">
+            <div className="mt-2 flex flex-wrap gap-2" style={{ contain: 'content' }}>
               {nodeData.images.map((image, index) => (
                 <div
                   key={index}
@@ -507,13 +507,16 @@ const AINode = ({ data, selected, id, ...props }: NodeProps) => {
                   <img
                     src={image}
                     alt={`Upload ${index + 1}`}
-                    className="w-16 h-16 object-cover rounded-lg border border-zinc-800"
+                    loading="lazy"
+                    decoding="async"
+                    className="w-12 h-12 object-cover rounded-lg border border-zinc-800"
+                    style={{ contentVisibility: 'auto' }}
                   />
                   <button
                     onClick={() => handleRemoveImage(index)}
-                    className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                   >
-                    <X className="w-3 h-3 text-white" />
+                    <X className="w-2.5 h-2.5 text-white" />
                   </button>
                 </div>
               ))}
