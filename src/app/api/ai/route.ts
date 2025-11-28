@@ -596,10 +596,10 @@ async function callNanoBanana(
           throw new Error('Content was blocked by safety filters');
         }
         
-        const parts: GeminiPart[] = data.candidates?.[0]?.content?.parts || [];
+        const responseParts: GeminiPart[] = data.candidates?.[0]?.content?.parts || [];
         const results: string[] = [];
         
-        for (const part of parts) {
+        for (const part of responseParts) {
           if (part.text) results.push(part.text);
           if (part.inlineData) {
             const mimeType = part.inlineData.mimeType || 'image/png';
