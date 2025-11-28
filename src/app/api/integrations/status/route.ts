@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { getAllIntegrationStatuses, disconnectIntegration, IntegrationProvider } from '@/lib/integrationService';
+import {
+  getAllIntegrationStatuses,
+  disconnectIntegration,
+  IntegrationProvider,
+} from '@/lib/integrationService';
 
 // GET - Get all integration statuses for the current user
 export async function GET() {
