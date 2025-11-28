@@ -674,10 +674,10 @@ const AINode = ({ data, selected, id, ...props }: NodeProps) => {
               <Settings className="w-4 h-4" />
             </button>
 
-            {/* Settings Panel */}
+            {/* Settings Panel - Opens upward to avoid clipping */}
             {isSettingsOpen && (
               <div 
-                className="absolute top-full right-0 mt-1 w-80 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl z-50 p-4"
+                className="absolute bottom-full right-0 mb-1 w-80 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl z-[100] p-4"
                 onWheel={(e) => e.stopPropagation()}
                 onMouseDown={(e) => e.stopPropagation()}
               >
