@@ -19,6 +19,7 @@ import {
   AirtableLogo,
 } from '@/components/icons/BrandLogos';
 import { useWorkflowStore } from '@/store/workflowStore';
+import { useAuth } from '@/context/AuthContext';
 
 export type IntegrationType = 'email' | 'google-sheets' | 'slack' | 'notion' | 'discord' | 'airtable';
 
@@ -161,6 +162,7 @@ function IntegrationNode({ data, selected, id }: NodeProps) {
   });
 
   const updateNodeData = useWorkflowStore((state) => state.updateNodeData);
+  const { user } = useAuth();
 
   const provider = INTEGRATION_TO_PROVIDER[nodeData.integrationType];
 
@@ -223,12 +225,17 @@ function IntegrationNode({ data, selected, id }: NodeProps) {
       return;
     }
 
+    if (!user) {
+      alert('Please log in first to connect integrations.');
+      return;
+    }
+
     setIsConnecting(true);
     
-    // Open OAuth flow in new window/tab
-    const authUrl = `/api/integrations/${provider}/authorize`;
+    // Open OAuth flow - pass user ID via query param since server can't access localStorage session
+    const authUrl = `/api/integrations/${provider}/authorize?userId=${encodeURIComponent(user.id)}`;
     window.location.href = authUrl;
-  }, [provider, config.name]);
+  }, [provider, config.name, user]);
 
   const handleDisconnect = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation();

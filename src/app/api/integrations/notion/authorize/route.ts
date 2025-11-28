@@ -1,15 +1,13 @@
-import { NextResponse } from 'next/server';
-import { createSupabaseServerClient } from '@/lib/supabaseServer';
+import { NextRequest, NextResponse } from 'next/server';
 
 const NOTION_AUTH_URL = 'https://api.notion.com/v1/oauth/authorize';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    // Check if user is authenticated using server client with cookies
-    const supabase = await createSupabaseServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // Get user ID from query params (passed from client)
+    const userId = request.nextUrl.searchParams.get('userId');
     
-    if (authError || !user) {
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized - please log in first' }, { status: 401 });
     }
 
@@ -28,7 +26,7 @@ export async function GET() {
     
     // Create state parameter with user ID for security
     const state = Buffer.from(JSON.stringify({
-      userId: user.id,
+      userId,
       timestamp: Date.now(),
     })).toString('base64');
 
