@@ -1,21 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { Node, Edge } from '@xyflow/react';
 
-// Helper to get user ID from request
+// Type definitions
+interface WorkflowUpdateData {
+  updated_at: string;
+  name?: string;
+  description?: string | null;
+  nodes?: Node[];
+  edges?: Edge[];
+}
+
 function getUserIdFromRequest(request: NextRequest): string | null {
   const userId = request.headers.get('x-user-id');
   return userId || null;
 }
 
+function checkSupabase() {
+  if (!supabase) {
+    return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
+  }
+  return null;
+}
+
 // GET - List all workflows for the current user
 export async function GET(request: NextRequest) {
+  const dbError = checkSupabase();
+  if (dbError) return dbError;
+  
   try {
     const userId = getUserIdFromRequest(request);
     if (!userId) {
       return NextResponse.json({ error: 'User ID required' }, { status: 400 });
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabase!
       .from('workflows')
       .select('*')
       .eq('user_id', userId)
@@ -38,6 +57,9 @@ export async function GET(request: NextRequest) {
 
 // POST - Create a new workflow
 export async function POST(request: NextRequest) {
+  const dbError = checkSupabase();
+  if (dbError) return dbError;
+  
   try {
     const userId = getUserIdFromRequest(request);
     if (!userId) {
@@ -51,7 +73,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Workflow name is required' }, { status: 400 });
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabase!
       .from('workflows')
       .insert({
         user_id: userId,
@@ -80,6 +102,9 @@ export async function POST(request: NextRequest) {
 
 // PUT - Update an existing workflow
 export async function PUT(request: NextRequest) {
+  const dbError = checkSupabase();
+  if (dbError) return dbError;
+  
   try {
     const userId = getUserIdFromRequest(request);
     if (!userId) {
@@ -93,7 +118,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Workflow ID is required' }, { status: 400 });
     }
 
-    const updateData: any = {
+    const updateData: WorkflowUpdateData = {
       updated_at: new Date().toISOString(),
     };
 
@@ -102,7 +127,7 @@ export async function PUT(request: NextRequest) {
     if (nodes !== undefined) updateData.nodes = nodes;
     if (edges !== undefined) updateData.edges = edges;
 
-    const { data, error } = await supabase
+    const { data, error } = await supabase!
       .from('workflows')
       .update(updateData)
       .eq('id', id)
@@ -131,6 +156,9 @@ export async function PUT(request: NextRequest) {
 
 // DELETE - Delete a workflow
 export async function DELETE(request: NextRequest) {
+  const dbError = checkSupabase();
+  if (dbError) return dbError;
+  
   try {
     const userId = getUserIdFromRequest(request);
     if (!userId) {
@@ -144,7 +172,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Workflow ID is required' }, { status: 400 });
     }
 
-    const { error } = await supabase
+    const { error } = await supabase!
       .from('workflows')
       .delete()
       .eq('id', id)

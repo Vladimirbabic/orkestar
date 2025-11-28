@@ -28,9 +28,7 @@ interface SettingsState {
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set, get) => ({
-      apiKeys: {
-        supadata: 'sd_962892f8a28af686d01d9e16c4140ecf', // Default Supadata API key
-      },
+      apiKeys: {},
       isSettingsOpen: false,
 
       setApiKey: async (model, key) => {

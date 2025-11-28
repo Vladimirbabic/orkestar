@@ -1,9 +1,16 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ivhrdgvmkxwmmsoerlci.supabase.co';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml2aHJkZ3Zta3h3bW1zb2VybGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI5NTcyODgsImV4cCI6MjA3ODUzMzI4OH0.UTV2q5S-OmUA9lrmvKKYdU1lZJB8j6aGQ3kNAJtlZJE';
+// Environment variables must be set - no fallback credentials in code
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.warn('Supabase credentials not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables.');
+}
+
+export const supabase: SupabaseClient | null = supabaseUrl && supabaseAnonKey 
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : null;
 
 // Helper to get current user ID
 // For now, using localStorage-based user ID (can be upgraded to proper auth later)
@@ -34,17 +41,19 @@ export function getCurrentUserIdSync(): string | null {
   return userId;
 }
 
-// Simple encryption/decryption helpers (for client-side)
-// Note: In production, you might want to use server-side encryption
-export function encryptKey(key: string): string {
-  // Simple base64 encoding for now - in production, use proper encryption
-  return btoa(key);
+// Simple obfuscation helpers (for client-side storage)
+// WARNING: This is NOT secure encryption - keys are stored locally only
+// For production with sensitive data, implement server-side key management
+export function obfuscateKey(key: string): string {
+  // Reverse and base64 encode - just to prevent casual viewing
+  const reversed = key.split('').reverse().join('');
+  return btoa(reversed);
 }
 
-export function decryptKey(encrypted: string): string {
-  // Simple base64 decoding for now - in production, use proper decryption
+export function deobfuscateKey(obfuscated: string): string {
   try {
-    return atob(encrypted);
+    const decoded = atob(obfuscated);
+    return decoded.split('').reverse().join('');
   } catch {
     return '';
   }

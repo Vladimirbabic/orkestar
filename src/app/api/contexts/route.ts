@@ -1,20 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
+// Type definitions for update operations
+interface ContextUpdateData {
+  updated_at: string;
+  name?: string;
+  content?: string;
+  system_prompt?: string | null;
+  temperature?: number | null;
+}
+
 function getUserIdFromRequest(request: NextRequest): string | null {
   const userId = request.headers.get('x-user-id');
   return userId || null;
 }
 
+function checkSupabase() {
+  if (!supabase) {
+    return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
+  }
+  return null;
+}
+
 // GET - List all contexts for the current user
 export async function GET(request: NextRequest) {
+  const dbError = checkSupabase();
+  if (dbError) return dbError;
+  
   try {
     const userId = getUserIdFromRequest(request);
     if (!userId) {
       return NextResponse.json({ error: 'User ID required' }, { status: 400 });
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabase!
       .from('contexts')
       .select('*')
       .eq('user_id', userId)
@@ -37,6 +56,9 @@ export async function GET(request: NextRequest) {
 
 // POST - Create a new context
 export async function POST(request: NextRequest) {
+  const dbError = checkSupabase();
+  if (dbError) return dbError;
+  
   try {
     const userId = getUserIdFromRequest(request);
     if (!userId) {
@@ -54,7 +76,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Context content is required' }, { status: 400 });
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabase!
       .from('contexts')
       .insert({
         user_id: userId,
@@ -83,6 +105,9 @@ export async function POST(request: NextRequest) {
 
 // PUT - Update an existing context
 export async function PUT(request: NextRequest) {
+  const dbError = checkSupabase();
+  if (dbError) return dbError;
+  
   try {
     const userId = getUserIdFromRequest(request);
     if (!userId) {
@@ -96,7 +121,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Context ID is required' }, { status: 400 });
     }
 
-    const updateData: any = {
+    const updateData: ContextUpdateData = {
       updated_at: new Date().toISOString(),
     };
 
@@ -105,7 +130,7 @@ export async function PUT(request: NextRequest) {
     if (system_prompt !== undefined) updateData.system_prompt = system_prompt;
     if (temperature !== undefined) updateData.temperature = temperature;
 
-    const { data, error } = await supabase
+    const { data, error } = await supabase!
       .from('contexts')
       .update(updateData)
       .eq('id', id)
@@ -134,6 +159,9 @@ export async function PUT(request: NextRequest) {
 
 // DELETE - Delete a context
 export async function DELETE(request: NextRequest) {
+  const dbError = checkSupabase();
+  if (dbError) return dbError;
+  
   try {
     const userId = getUserIdFromRequest(request);
     if (!userId) {
@@ -147,7 +175,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Context ID is required' }, { status: 400 });
     }
 
-    const { error } = await supabase
+    const { error } = await supabase!
       .from('contexts')
       .delete()
       .eq('id', id)

@@ -1,14 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { Node, Edge } from '@xyflow/react';
 
-// Helper to get user ID from request
+// Type definitions
+interface SessionUpdateData {
+  updated_at: string;
+  name?: string;
+  nodes?: Node[];
+  edges?: Edge[];
+}
+
 function getUserIdFromRequest(request: NextRequest): string | null {
   const userId = request.headers.get('x-user-id');
   return userId || null;
 }
 
+function checkSupabase() {
+  if (!supabase) {
+    return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
+  }
+  return null;
+}
+
 // GET - List sessions for a workflow or all sessions
 export async function GET(request: NextRequest) {
+  const dbError = checkSupabase();
+  if (dbError) return dbError;
+  
   try {
     const userId = getUserIdFromRequest(request);
     if (!userId) {
@@ -18,7 +36,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const workflowId = searchParams.get('workflow_id');
 
-    let query = supabase
+    let query = supabase!
       .from('sessions')
       .select('*')
       .eq('user_id', userId)
@@ -47,6 +65,9 @@ export async function GET(request: NextRequest) {
 
 // POST - Create a new session
 export async function POST(request: NextRequest) {
+  const dbError = checkSupabase();
+  if (dbError) return dbError;
+  
   try {
     const userId = getUserIdFromRequest(request);
     if (!userId) {
@@ -64,7 +85,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Workflow ID is required' }, { status: 400 });
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabase!
       .from('sessions')
       .insert({
         user_id: userId,
@@ -93,6 +114,9 @@ export async function POST(request: NextRequest) {
 
 // PUT - Update an existing session
 export async function PUT(request: NextRequest) {
+  const dbError = checkSupabase();
+  if (dbError) return dbError;
+  
   try {
     const userId = getUserIdFromRequest(request);
     if (!userId) {
@@ -106,7 +130,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Session ID is required' }, { status: 400 });
     }
 
-    const updateData: any = {
+    const updateData: SessionUpdateData = {
       updated_at: new Date().toISOString(),
     };
 
@@ -114,7 +138,7 @@ export async function PUT(request: NextRequest) {
     if (nodes !== undefined) updateData.nodes = nodes;
     if (edges !== undefined) updateData.edges = edges;
 
-    const { data, error } = await supabase
+    const { data, error } = await supabase!
       .from('sessions')
       .update(updateData)
       .eq('id', id)
@@ -143,6 +167,9 @@ export async function PUT(request: NextRequest) {
 
 // DELETE - Delete a session
 export async function DELETE(request: NextRequest) {
+  const dbError = checkSupabase();
+  if (dbError) return dbError;
+  
   try {
     const userId = getUserIdFromRequest(request);
     if (!userId) {
@@ -156,7 +183,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Session ID is required' }, { status: 400 });
     }
 
-    const { error } = await supabase
+    const { error } = await supabase!
       .from('sessions')
       .delete()
       .eq('id', id)

@@ -1,21 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase, encryptKey, decryptKey } from '@/lib/supabase';
+import { supabase, obfuscateKey, deobfuscateKey } from '@/lib/supabase';
 
-// Helper to get user ID from request
 function getUserIdFromRequest(request: NextRequest): string | null {
   const userId = request.headers.get('x-user-id');
   return userId || null;
 }
 
+function checkSupabase() {
+  if (!supabase) {
+    return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
+  }
+  return null;
+}
+
 // GET - Get all API keys for the current user
 export async function GET(request: NextRequest) {
+  const dbError = checkSupabase();
+  if (dbError) return dbError;
+  
   try {
     const userId = getUserIdFromRequest(request);
     if (!userId) {
       return NextResponse.json({ error: 'User ID required' }, { status: 400 });
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabase!
       .from('api_keys')
       .select('*')
       .eq('user_id', userId);
@@ -25,15 +34,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Decrypt keys before returning
-    const decryptedKeys = (data || []).map((key) => ({
+    // Deobfuscate keys before returning
+    const deobfuscatedKeys = (data || []).map((key: { model: string; encrypted_key: string }) => ({
       model: key.model,
-      key: decryptKey(key.encrypted_key),
+      key: deobfuscateKey(key.encrypted_key),
     }));
 
     // Convert to object format
     const keysObject: Record<string, string> = {};
-    decryptedKeys.forEach(({ model, key }) => {
+    deobfuscatedKeys.forEach(({ model, key }) => {
       keysObject[model] = key;
     });
 
@@ -49,6 +58,9 @@ export async function GET(request: NextRequest) {
 
 // POST - Save API keys
 export async function POST(request: NextRequest) {
+  const dbError = checkSupabase();
+  if (dbError) return dbError;
+  
   try {
     const userId = getUserIdFromRequest(request);
     if (!userId) {
@@ -69,14 +81,14 @@ export async function POST(request: NextRequest) {
         return;
       }
 
-      const encrypted = encryptKey(key);
+      const obfuscated = obfuscateKey(key);
 
-      const { error } = await supabase
+      const { error } = await supabase!
         .from('api_keys')
         .upsert({
           user_id: userId,
           model,
-          encrypted_key: encrypted,
+          encrypted_key: obfuscated,
           updated_at: new Date().toISOString(),
         }, {
           onConflict: 'user_id,model',
@@ -102,6 +114,9 @@ export async function POST(request: NextRequest) {
 
 // DELETE - Delete an API key
 export async function DELETE(request: NextRequest) {
+  const dbError = checkSupabase();
+  if (dbError) return dbError;
+  
   try {
     const userId = getUserIdFromRequest(request);
     if (!userId) {
@@ -115,7 +130,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Model is required' }, { status: 400 });
     }
 
-    const { error } = await supabase
+    const { error } = await supabase!
       .from('api_keys')
       .delete()
       .eq('user_id', userId)

@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useWorkflowRunnerContext } from '@/context/WorkflowRunnerContext';
 import { useWorkflowStore } from '@/store/workflowStore';
-import { saveWorkflow, listWorkflows, loadWorkflow } from '@/lib/workflowService';
+import { saveWorkflow, listWorkflows, loadWorkflow, Workflow } from '@/lib/workflowService';
 import {
   Play,
   Save,
@@ -29,7 +29,7 @@ export default function Toolbar() {
   const { runWorkflow, isRunning } = useWorkflowRunnerContext();
   const [isSaving, setIsSaving] = useState(false);
   const [isWorkflowDropdownOpen, setIsWorkflowDropdownOpen] = useState(false);
-  const [workflows, setWorkflows] = useState<any[]>([]);
+  const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error' | null>(null);
   const [enabledCount, setEnabledCount] = useState(0);
   const [isMounted, setIsMounted] = useState(false);
