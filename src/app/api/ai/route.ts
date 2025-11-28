@@ -26,6 +26,7 @@ interface OpenAIOptions {
 
 interface GeminiOptions {
   subModel?: string;
+  systemPrompt?: string;
   temperature: number;
   maxTokens: number;
   images?: string[];
@@ -128,7 +129,7 @@ export async function POST(request: NextRequest) {
         if (subModel === 'gemini-2.5-flash-image' || subModel === 'gemini-2.0-flash-exp') {
           result = await callNanoBanana(prompt, apiKey, { subModel, systemPrompt, temperature, images });
         } else {
-          result = await callGemini(prompt, apiKey, { subModel, temperature, maxTokens, images });
+          result = await callGemini(prompt, apiKey, { subModel, systemPrompt, temperature, maxTokens, images });
         }
         break;
       case 'elevenlabs':
@@ -464,18 +465,28 @@ async function callGemini(
   
   for (const model of modelOptions) {
     try {
+      // Build request body with optional system instruction
+      const requestBody: Record<string, unknown> = {
+        contents: [{ role: 'user', parts }],
+        generationConfig: {
+          temperature: options.temperature,
+          maxOutputTokens: options.maxTokens,
+        },
+      };
+      
+      // Add system instruction if provided
+      if (options.systemPrompt) {
+        requestBody.systemInstruction = {
+          parts: [{ text: options.systemPrompt }]
+        };
+      }
+      
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ role: 'user', parts }],
-            generationConfig: {
-              temperature: options.temperature,
-              maxOutputTokens: options.maxTokens,
-            },
-          }),
+          body: JSON.stringify(requestBody),
         }
       );
 
