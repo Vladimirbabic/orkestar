@@ -10,10 +10,11 @@ import {
   ReactFlowProvider,
   useReactFlow,
 } from '@xyflow/react';
-import { useWorkflowStore, AIModel } from '@/store/workflowStore';
+import { useWorkflowStore, AIModel, NodeData } from '@/store/workflowStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import AINode from '@/components/nodes/AINode';
 import ResultNode from '@/components/nodes/ResultNode';
+import NodeSettingsPanel from '@/components/NodeSettingsPanel';
 import { Key, MousePointer } from 'lucide-react';
 
 // Memoize node types to prevent recreation
@@ -61,10 +62,20 @@ function WorkflowCanvasInner() {
   const addNode = useWorkflowStore((state) => state.addNode);
   const addResultNode = useWorkflowStore((state) => state.addResultNode);
   const setSelectedNode = useWorkflowStore((state) => state.setSelectedNode);
+  const settingsNodeId = useWorkflowStore((state) => state.settingsNodeId);
+  const setSettingsNodeId = useWorkflowStore((state) => state.setSettingsNodeId);
   
   const apiKeys = useSettingsStore((state) => state.apiKeys);
   const getEnabledModels = useSettingsStore((state) => state.getEnabledModels);
   const openSettings = useSettingsStore((state) => state.openSettings);
+
+  // Get the node data for the settings panel
+  const settingsNode = useMemo(() => {
+    if (!settingsNodeId) return null;
+    const node = nodes.find((n) => n.id === settingsNodeId);
+    if (!node || node.type !== 'aiNode') return null;
+    return node.data as NodeData;
+  }, [settingsNodeId, nodes]);
 
   const enabledModels = useMemo(() => getEnabledModels(), [getEnabledModels, apiKeys]);
   const hasModels = enabledModels.length > 0;
@@ -174,6 +185,15 @@ function WorkflowCanvasInner() {
             )}
           </div>
         </div>
+      )}
+
+      {/* Node Settings Panel */}
+      {settingsNodeId && settingsNode && (
+        <NodeSettingsPanel
+          nodeId={settingsNodeId}
+          nodeData={settingsNode}
+          onClose={() => setSettingsNodeId(null)}
+        />
       )}
     </div>
   );

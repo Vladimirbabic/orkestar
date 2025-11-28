@@ -50,6 +50,7 @@ interface WorkflowState {
   nodes: Node<NodeData | ResultNodeData>[];
   edges: Edge[];
   selectedNode: Node<NodeData | ResultNodeData> | null;
+  settingsNodeId: string | null; // ID of node whose settings panel is open
   currentWorkflowId: string | null;
   currentWorkflowName: string;
   onNodesChange: (changes: NodeChange[]) => void;
@@ -59,6 +60,7 @@ interface WorkflowState {
   addResultNode: (position: { x: number; y: number }) => void;
   updateNodeData: (nodeId: string, data: Partial<NodeData | ResultNodeData>) => void;
   setSelectedNode: (node: Node<NodeData | ResultNodeData> | null) => void;
+  setSettingsNodeId: (nodeId: string | null) => void;
   deleteNode: (nodeId: string) => void;
   duplicateNode: (nodeId: string) => void;
   setWorkflowName: (name: string) => void;
@@ -135,6 +137,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   nodes: [],
   edges: [],
   selectedNode: null,
+  settingsNodeId: null,
   currentWorkflowId: null,
   currentWorkflowName: 'My Workflow',
 
@@ -211,6 +214,10 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
 
   setSelectedNode: (node) => {
     set({ selectedNode: node });
+  },
+
+  setSettingsNodeId: (nodeId) => {
+    set({ settingsNodeId: nodeId });
   },
 
   deleteNode: (nodeId) => {

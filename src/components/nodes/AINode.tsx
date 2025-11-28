@@ -1,11 +1,10 @@
 'use client';
 
-import { memo, useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { memo, useState, useRef, useEffect, useCallback } from 'react';
 import { Handle, Position, NodeProps, useEdges } from '@xyflow/react';
 import { NodeData, AIModel, SubModel, useWorkflowStore } from '@/store/workflowStore';
 import { useWorkflowRunnerContext } from '@/context/WorkflowRunnerContext';
 import { modelVariants, getDefaultSubModel, getSubModelLabel } from '@/lib/modelConfig';
-import { listContexts, type Context } from '@/lib/contextService';
 import {
   Sparkles,
   Bot,
@@ -61,21 +60,14 @@ const AINode = ({ data, selected, id, ...props }: NodeProps) => {
   const nodeData = data as unknown as NodeData;
   const updateNodeData = useWorkflowStore((state) => state.updateNodeData);
   const duplicateNode = useWorkflowStore((state) => state.duplicateNode);
+  const setSettingsNodeId = useWorkflowStore((state) => state.setSettingsNodeId);
   const { runSingleNode, isRunning: isWorkflowRunning } = useWorkflowRunnerContext();
   const edges = useEdges();
   const [isProviderDropdownOpen, setIsProviderDropdownOpen] = useState(false);
   const [isSubModelDropdownOpen, setIsSubModelDropdownOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [localPrompt, setLocalPrompt] = useState(nodeData.prompt || '');
-  const [localSystemPrompt, setLocalSystemPrompt] = useState(nodeData.systemPrompt || '');
-  const [localTemperature, setLocalTemperature] = useState(nodeData.temperature || 0.7);
-  const [contexts, setContexts] = useState<Context[]>([]);
-  const [isLoadingContexts, setIsLoadingContexts] = useState(false);
-  const [voices, setVoices] = useState<Array<{ voice_id: string; name: string }>>([]);
-  const [isLoadingVoices, setIsLoadingVoices] = useState(false);
   const providerDropdownRef = useRef<HTMLDivElement>(null);
   const subModelDropdownRef = useRef<HTMLDivElement>(null);
-  const settingsRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -90,93 +82,6 @@ const AINode = ({ data, selected, id, ...props }: NodeProps) => {
   useEffect(() => {
     setLocalPrompt(nodeData.prompt || '');
   }, [nodeData.prompt]);
-
-  useEffect(() => {
-    setLocalSystemPrompt(nodeData.systemPrompt || '');
-  }, [nodeData.systemPrompt]);
-
-  useEffect(() => {
-    setLocalTemperature(nodeData.temperature || 0.7);
-  }, [nodeData.temperature]);
-
-  // Track if contexts have been loaded
-  const contextsLoadedRef = useRef(false);
-  
-  // Load contexts when component mounts if contextId is set (only once)
-  useEffect(() => {
-    if (!nodeData.contextId || contextsLoadedRef.current || contexts.length > 0) {
-      return;
-    }
-    
-    contextsLoadedRef.current = true;
-    let isCancelled = false;
-    
-    listContexts()
-      .then((loadedContexts) => {
-        if (!isCancelled) {
-          setContexts(loadedContexts);
-        }
-      })
-      .catch((error) => {
-        if (!isCancelled) {
-          console.error('Failed to load contexts:', error);
-          contextsLoadedRef.current = false; // Allow retry on error
-        }
-      });
-    
-    return () => {
-      isCancelled = true;
-    };
-  }, [nodeData.contextId, contexts.length]);
-
-  // Track if voices have been loaded to prevent re-fetching
-  const voicesLoadedRef = useRef(false);
-  
-  // Reusable function to load voices
-  const loadVoices = useCallback(async (abortSignal?: AbortSignal) => {
-    if (isLoadingVoices || voices.length > 0) return;
-    
-    setIsLoadingVoices(true);
-    try {
-      const { useSettingsStore } = await import('@/store/settingsStore');
-      const apiKey = useSettingsStore.getState().apiKeys.elevenlabs;
-      
-      if (apiKey && !abortSignal?.aborted) {
-        const response = await fetch('https://api.elevenlabs.io/v1/voices', {
-          method: 'GET',
-          headers: { 'xi-api-key': apiKey },
-          signal: abortSignal,
-        });
-        
-        if (response.ok && !abortSignal?.aborted) {
-          const voicesData = await response.json();
-          setVoices(voicesData.voices || []);
-        }
-      }
-    } catch (error) {
-      if (error instanceof Error && error.name !== 'AbortError') {
-        console.error('Failed to load voices:', error);
-      }
-      voicesLoadedRef.current = false; // Allow retry on error
-    } finally {
-      if (!abortSignal?.aborted) {
-        setIsLoadingVoices(false);
-      }
-    }
-  }, [isLoadingVoices, voices.length]);
-  
-  // Load voices when component mounts for ElevenLabs (only once)
-  useEffect(() => {
-    if (nodeData.model !== 'elevenlabs' || voicesLoadedRef.current || voices.length > 0) {
-      return;
-    }
-    
-    const abortController = new AbortController();
-    voicesLoadedRef.current = true;
-    
-    loadVoices(abortController.signal);
-    return () => abortController.abort();
-  }, [nodeData.model, voices.length, loadVoices]);
 
   // Initialize subModel if not set
   useEffect(() => {
@@ -194,9 +99,6 @@ const AINode = ({ data, selected, id, ...props }: NodeProps) => {
       }
       if (subModelDropdownRef.current && !subModelDropdownRef.current.contains(event.target as Node)) {
         setIsSubModelDropdownOpen(false);
-      }
-      if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
-        setIsSettingsOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -236,28 +138,6 @@ const AINode = ({ data, selected, id, ...props }: NodeProps) => {
 
   const handlePromptBlur = () => {
     updateNodeData(id, { prompt: localPrompt });
-  };
-
-  const handleSystemPromptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setLocalSystemPrompt(e.target.value);
-    // If context is applied, clear it when user manually edits
-    if (nodeData.contextId) {
-      updateNodeData(id, { contextId: undefined });
-    }
-  };
-
-  const handleSystemPromptBlur = () => {
-    updateNodeData(id, { systemPrompt: localSystemPrompt });
-  };
-
-  const handleTemperatureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseFloat(e.target.value);
-    setLocalTemperature(value);
-    updateNodeData(id, { temperature: value });
-    // If context is applied, clear it when user manually edits
-    if (nodeData.contextId) {
-      updateNodeData(id, { contextId: undefined });
-    }
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -312,42 +192,9 @@ const AINode = ({ data, selected, id, ...props }: NodeProps) => {
     await runSingleNode(id);
   };
 
-  const toggleSettings = async (e: React.MouseEvent) => {
+  const openSettings = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const willOpen = !isSettingsOpen;
-    setIsSettingsOpen(willOpen);
-    
-    // Load contexts when opening settings
-    if (willOpen && contexts.length === 0) {
-      setIsLoadingContexts(true);
-      try {
-        const loadedContexts = await listContexts();
-        setContexts(loadedContexts);
-      } catch (error) {
-        console.error('Failed to load contexts:', error);
-      } finally {
-        setIsLoadingContexts(false);
-      }
-    }
-  };
-
-  const handleContextSelect = (contextId: string | null) => {
-    if (contextId) {
-      const selectedContext = contexts.find((c) => c.id === contextId);
-      if (selectedContext) {
-        // Apply context's system prompt and temperature
-        updateNodeData(id, {
-          contextId: contextId,
-          systemPrompt: selectedContext.system_prompt || nodeData.systemPrompt || '',
-          temperature: selectedContext.temperature ?? nodeData.temperature ?? 0.7,
-        });
-        setLocalSystemPrompt(selectedContext.system_prompt || '');
-        setLocalTemperature(selectedContext.temperature ?? 0.7);
-      }
-    } else {
-      // Clear context
-      updateNodeData(id, { contextId: undefined });
-    }
+    setSettingsNodeId(id);
   };
 
   return (
@@ -525,51 +372,18 @@ const AINode = ({ data, selected, id, ...props }: NodeProps) => {
         </div>
       )}
 
-      {/* Voice Selector for ElevenLabs */}
+      {/* ElevenLabs info */}
       {nodeData.model === 'elevenlabs' && (
         <div className="px-3 pb-2">
-          <label className="block text-xs font-medium text-zinc-400 mb-2">
-            Select Voice
-          </label>
-          <select
-            value={nodeData.voiceId || ''}
-            onChange={(e) => {
-              updateNodeData(id, { voiceId: e.target.value || undefined });
-            }}
-            className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-zinc-600 focus:border-zinc-600"
-            onClick={(e) => {
-              e.stopPropagation();
-              loadVoices();
-            }}
-          >
-            <option value="">Select a voice...</option>
-            {isLoadingVoices ? (
-              <option disabled>Loading voices...</option>
-            ) : voices.length > 0 ? (
-              voices.map((voice) => (
-                <option key={voice.voice_id} value={voice.voice_id}>
-                  {voice.name}
-                </option>
-              ))
-            ) : (
-              <>
-                <option value="21m00Tcm4TlvDq8ikWAM">Rachel (Default)</option>
-                <option value="pNInz6obpgDQGcFmaJgB">Adam</option>
-                <option value="EXAVITQu4vr4xnSDxMaL">Bella</option>
-                <option value="ErXwobaYiN019PkySvjV">Antoni</option>
-                <option value="MF3mGyEYCl7XYWbV9V6O">Elli</option>
-                <option value="TxGEqnHWrfWFTfGW9XjX">Josh</option>
-                <option value="VR6AewLTigWG4xSOukaG">Arnold</option>
-                <option value="yoZ06aMxZJJ28mfd3POQ">Sam</option>
-              </>
-            )}
-          </select>
+          <p className="text-xs text-zinc-400">
+            {nodeData.voiceId ? '🎤 Voice selected' : '⚙️ Configure voice in settings'}
+          </p>
           {hasIncomingConnection ? (
-            <p className="text-[10px] text-blue-400/70 mt-1 px-1">
+            <p className="text-[10px] text-blue-400/70 mt-1">
               ℹ️ Will convert text from previous step to audio
             </p>
           ) : (
-            <p className="text-[10px] text-zinc-500 mt-1 px-1">
+            <p className="text-[10px] text-zinc-500 mt-1">
               Connect a node to convert its output to audio
             </p>
           )}
@@ -659,167 +473,13 @@ const AINode = ({ data, selected, id, ...props }: NodeProps) => {
           </button>
 
           {/* Settings button */}
-          <div ref={settingsRef} className="relative">
-            <button 
-              onClick={toggleSettings}
-              className={`
-                p-1.5 rounded-lg transition-colors
-                ${isSettingsOpen 
-                  ? 'bg-zinc-700 text-zinc-200' 
-                  : 'hover:bg-zinc-700 text-zinc-500 hover:text-zinc-300'
-                }
-              `}
-              title="Node settings"
-            >
-              <Settings className="w-4 h-4" />
-            </button>
-
-            {/* Settings Panel - Opens upward to avoid clipping */}
-            {isSettingsOpen && (
-              <div 
-                className="absolute bottom-full right-0 mb-1 w-80 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl z-[100] p-4"
-                onWheel={(e) => e.stopPropagation()}
-                onMouseDown={(e) => e.stopPropagation()}
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-sm font-medium text-zinc-200">Node Settings</span>
-                  <button
-                    onClick={() => setIsSettingsOpen(false)}
-                    className="p-1 rounded hover:bg-zinc-700 text-zinc-400"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-
-                {/* Voice Selector for ElevenLabs */}
-                {nodeData.model === 'elevenlabs' && (
-                  <div className="mb-4">
-                    <label className="block text-xs font-medium text-zinc-400 mb-2">
-                      Voice
-                    </label>
-                    <select
-                      value={nodeData.voiceId || ''}
-                      onChange={(e) => {
-                        updateNodeData(id, { voiceId: e.target.value || undefined });
-                      }}
-                      className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-zinc-600"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const abortController = new AbortController();
-                        loadVoices(abortController.signal);
-                      }}
-                    >
-                      <option value="">Select a voice...</option>
-                      {isLoadingVoices ? (
-                        <option disabled>Loading voices...</option>
-                      ) : voices.length > 0 ? (
-                        voices.map((voice) => (
-                          <option key={voice.voice_id} value={voice.voice_id}>
-                            {voice.name}
-                          </option>
-                        ))
-                      ) : (
-                        <>
-                          <option value="21m00Tcm4TlvDq8ikWAM">Rachel (Default)</option>
-                          <option value="pNInz6obpgDQGcFmaJgB">Adam</option>
-                          <option value="EXAVITQu4vr4xnSDxMaL">Bella</option>
-                          <option value="ErXwobaYiN019PkySvjV">Antoni</option>
-                          <option value="MF3mGyEYCl7XYWbV9V6O">Elli</option>
-                          <option value="TxGEqnHWrfWFTfGW9XjX">Josh</option>
-                          <option value="VR6AewLTigWG4xSOukaG">Arnold</option>
-                          <option value="yoZ06aMxZJJ28mfd3POQ">Sam</option>
-                        </>
-                      )}
-                    </select>
-                    <p className="text-[10px] text-zinc-500 mt-1">
-                      {hasIncomingConnection 
-                        ? 'Will convert text from previous step to audio'
-                        : 'Connect a node to provide text to convert'}
-                    </p>
-                  </div>
-                )}
-
-                {/* Context Selector */}
-                {nodeData.model !== 'elevenlabs' && (
-                  <div className="mb-4">
-                    <label className="block text-xs font-medium text-zinc-400 mb-2">
-                      Context Template
-                    </label>
-                    <select
-                      value={nodeData.contextId || ''}
-                      onChange={(e) => handleContextSelect(e.target.value || null)}
-                      className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-zinc-600"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <option value="">None</option>
-                      {isLoadingContexts ? (
-                        <option disabled>Loading...</option>
-                      ) : (
-                        contexts.map((context) => (
-                          <option key={context.id} value={context.id}>
-                            {context.name}
-                          </option>
-                        ))
-                      )}
-                    </select>
-                  </div>
-                )}
-
-                {/* System Prompt */}
-                <div className="mb-4">
-                  <label className="block text-xs font-medium text-zinc-400 mb-2">
-                    System Prompt
-                  </label>
-                  <textarea
-                    value={localSystemPrompt}
-                    onChange={handleSystemPromptChange}
-                    onBlur={handleSystemPromptBlur}
-                    disabled={!!nodeData.contextId}
-                    placeholder={nodeData.contextId ? 'Using context template...' : 'Enter system prompt...'}
-                    className={`
-                      w-full min-h-[80px] px-3 py-2 
-                      bg-zinc-950 border rounded-lg
-                      text-sm text-zinc-200 placeholder-zinc-600
-                      resize-none
-                      focus:outline-none focus:ring-1 transition-all
-                      ${nodeData.contextId 
-                        ? 'border-zinc-800/50 text-zinc-500 cursor-not-allowed' 
-                        : 'border-zinc-700 focus:border-zinc-600 focus:ring-zinc-600'
-                      }
-                    `}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                </div>
-
-                {/* Temperature */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-xs font-medium text-zinc-400">
-                      Temperature
-                    </label>
-                    <span className="text-xs text-zinc-500">{localTemperature.toFixed(1)}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="2"
-                    step="0.1"
-                    value={localTemperature}
-                    onChange={handleTemperatureChange}
-                    disabled={!!nodeData.contextId}
-                    className={`
-                      w-full h-2 bg-zinc-900 rounded-lg appearance-none cursor-pointer
-                      ${nodeData.contextId ? 'opacity-50 cursor-not-allowed' : ''}
-                    `}
-                    style={{
-                      background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${(localTemperature / 2) * 100}%, #27272a ${(localTemperature / 2) * 100}%, #27272a 100%)`
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
+          <button 
+            onClick={openSettings}
+            className="p-1.5 rounded-lg transition-colors hover:bg-zinc-700 text-zinc-500 hover:text-zinc-300"
+            title="Node settings"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
 
           {/* Play button */}
           <button
