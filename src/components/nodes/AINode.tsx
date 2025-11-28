@@ -7,10 +7,8 @@ import { useWorkflowRunnerContext } from '@/context/WorkflowRunnerContext';
 import { modelVariants, getDefaultSubModel, getSubModelLabel } from '@/lib/modelConfig';
 import {
   Sparkles,
-  Bot,
   Zap,
   Image as ImageIcon,
-  Palette,
   Settings,
   Play,
   CheckCircle2,
@@ -18,7 +16,6 @@ import {
   ChevronDown,
   ArrowLeftCircle,
   X,
-  Banana,
   Volume2,
   Copy,
   Database,
@@ -60,6 +57,7 @@ const AINode = ({ data, selected, id, ...props }: NodeProps) => {
   const nodeData = data as unknown as NodeData;
   const updateNodeData = useWorkflowStore((state) => state.updateNodeData);
   const duplicateNode = useWorkflowStore((state) => state.duplicateNode);
+  const deleteNode = useWorkflowStore((state) => state.deleteNode);
   const setSettingsNodeId = useWorkflowStore((state) => state.setSettingsNodeId);
   const { runSingleNode, isRunning: isWorkflowRunning } = useWorkflowRunnerContext();
   const edges = useEdges();
@@ -479,6 +477,18 @@ const AINode = ({ data, selected, id, ...props }: NodeProps) => {
             title="Node settings"
           >
             <Settings className="w-4 h-4" />
+          </button>
+
+          {/* Delete button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              deleteNode(id);
+            }}
+            className="p-1.5 rounded-lg transition-colors hover:bg-red-500/20 text-zinc-500 hover:text-red-400"
+            title="Delete node"
+          >
+            <Trash2 className="w-4 h-4" />
           </button>
 
           {/* Play button */}
