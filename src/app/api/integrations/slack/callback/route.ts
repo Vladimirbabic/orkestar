@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createSupabaseServerClient } from '@/lib/supabaseServer';
 
 const SLACK_TOKEN_URL = 'https://slack.com/api/oauth.v2.access';
 
@@ -77,9 +77,7 @@ export async function GET(request: NextRequest) {
     const botUserId = data.bot_user_id;
 
     // Store tokens in database
-    if (!supabase) {
-      return NextResponse.redirect(`${appUrl}/workflows/new?integration_error=db_not_configured`);
-    }
+    const supabase = await createSupabaseServerClient();
     
     const { error: upsertError } = await supabase
       .from('user_integrations')
@@ -115,4 +113,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${appUrl}/workflows/new?integration_error=callback_failed`);
   }
 }
-

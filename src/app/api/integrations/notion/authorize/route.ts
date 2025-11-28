@@ -1,18 +1,16 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createSupabaseServerClient } from '@/lib/supabaseServer';
 
 const NOTION_AUTH_URL = 'https://api.notion.com/v1/oauth/authorize';
 
 export async function GET() {
   try {
-    // Check if user is authenticated
-    if (!supabase) {
-      return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
-    }
+    // Check if user is authenticated using server client with cookies
+    const supabase = await createSupabaseServerClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized - please log in first' }, { status: 401 });
     }
 
     // Check for required environment variables
@@ -51,4 +49,3 @@ export async function GET() {
     );
   }
 }
-

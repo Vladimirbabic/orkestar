@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createSupabaseServerClient } from '@/lib/supabaseServer';
 
 const NOTION_TOKEN_URL = 'https://api.notion.com/v1/oauth/token';
 
@@ -83,9 +83,7 @@ export async function GET(request: NextRequest) {
     const ownerUser = data.owner?.user;
 
     // Store tokens in database
-    if (!supabase) {
-      return NextResponse.redirect(`${appUrl}/workflows/new?integration_error=db_not_configured`);
-    }
+    const supabase = await createSupabaseServerClient();
     
     const { error: upsertError } = await supabase
       .from('user_integrations')
@@ -121,4 +119,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${appUrl}/workflows/new?integration_error=callback_failed`);
   }
 }
-

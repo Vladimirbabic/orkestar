@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createSupabaseServerClient } from '@/lib/supabaseServer';
 
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const GOOGLE_USERINFO_URL = 'https://www.googleapis.com/oauth2/v2/userinfo';
@@ -83,9 +83,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Store tokens in database
-    if (!supabase) {
-      return NextResponse.redirect(`${appUrl}/workflows/new?integration_error=db_not_configured`);
-    }
+    const supabase = await createSupabaseServerClient();
     
     const { error: upsertError } = await supabase
       .from('user_integrations')
@@ -120,4 +118,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${appUrl}/workflows/new?integration_error=callback_failed`);
   }
 }
-

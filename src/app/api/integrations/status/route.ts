@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createSupabaseServerClient } from '@/lib/supabaseServer';
 import {
   getAllIntegrationStatuses,
   disconnectIntegration,
@@ -9,9 +9,7 @@ import {
 // GET - Get all integration statuses for the current user
 export async function GET() {
   try {
-    if (!supabase) {
-      return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
-    }
+    const supabase = await createSupabaseServerClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     if (authError || !user) {
@@ -33,9 +31,7 @@ export async function GET() {
 // DELETE - Disconnect a specific integration
 export async function DELETE(request: NextRequest) {
   try {
-    if (!supabase) {
-      return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
-    }
+    const supabase = await createSupabaseServerClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     if (authError || !user) {
@@ -69,4 +65,3 @@ export async function DELETE(request: NextRequest) {
     );
   }
 }
-
