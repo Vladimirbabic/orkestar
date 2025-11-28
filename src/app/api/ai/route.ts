@@ -258,7 +258,13 @@ async function callOpenAI(
     messages.push({ role: 'user', content: prompt });
   }
 
-  // Use Responses API for gpt-5.1 (latest model) when no images
+  // When system prompt is provided, always use Chat Completions API for reliable system message support
+  // Use gpt-4o as it's the most capable model with proper system prompt support
+  if (options.systemPrompt) {
+    return callOpenAIChatCompletions(messages, apiKey, options, 'gpt-4o');
+  }
+
+  // Use Responses API for gpt-5.1 (latest model) when no images and no system prompt
   if (model === 'gpt-5.1') {
     return callOpenAIResponses(prompt, apiKey, options);
   }
