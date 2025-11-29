@@ -83,7 +83,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Store tokens in database using admin client to bypass RLS
-    const supabase = createSupabaseAdminClient();
+    let supabase;
+    try {
+      supabase = createSupabaseAdminClient();
+    } catch (adminError) {
+      console.error('Failed to create admin client:', adminError);
+      return NextResponse.redirect(`${appUrl}/workflows/new?integration_error=admin_client_failed`);
+    }
     
     const { error: upsertError } = await supabase
       .from('user_integrations')
@@ -107,7 +113,7 @@ export async function GET(request: NextRequest) {
 
     if (upsertError) {
       console.error('Error storing Google tokens:', upsertError);
-      return NextResponse.redirect(`${appUrl}/workflows/new?integration_error=storage_failed`);
+      return NextResponse.redirect(`${appUrl}/workflows/new?integration_error=storage_failed_${encodeURIComponent(upsertError.message)}`);
     }
 
     // Success - redirect back to workflow builder
