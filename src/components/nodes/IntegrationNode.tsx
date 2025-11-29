@@ -10,6 +10,8 @@ import {
   ExternalLink,
   LogOut,
   Loader2,
+  FileSpreadsheet,
+  RefreshCw,
 } from 'lucide-react';
 import {
   SlackLogo,
@@ -20,6 +22,12 @@ import {
 } from '@/components/icons/BrandLogos';
 import { useWorkflowStore } from '@/store/workflowStore';
 import { useAuth } from '@/context/AuthContext';
+
+interface Spreadsheet {
+  id: string;
+  name: string;
+  url: string;
+}
 
 export type IntegrationType = 'email' | 'google-sheets' | 'slack' | 'notion' | 'discord' | 'airtable';
 
@@ -160,6 +168,12 @@ function IntegrationNode({ data, selected, id }: NodeProps) {
     connected: nodeData.isConnected || false,
     providerEmail: nodeData.accountEmail,
   });
+  
+  // Google Sheets specific state
+  const [showSpreadsheetDropdown, setShowSpreadsheetDropdown] = useState(false);
+  const [spreadsheets, setSpreadsheets] = useState<Spreadsheet[]>([]);
+  const [isLoadingSpreadsheets, setIsLoadingSpreadsheets] = useState(false);
+  const [spreadsheetsError, setSpreadsheetsError] = useState<string | null>(null);
 
   const updateNodeData = useWorkflowStore((state) => state.updateNodeData);
   const { user } = useAuth();
@@ -189,6 +203,10 @@ function IntegrationNode({ data, selected, id }: NodeProps) {
                 accountEmail: status.providerEmail,
               });
             }
+            // Auto-expand settings if connected and no spreadsheet selected (for Google Sheets)
+            if (status.connected && nodeData.integrationType === 'google-sheets' && !nodeData.spreadsheetId) {
+              setShowSettings(true);
+            }
           }
         }
       } catch (error) {
@@ -206,6 +224,10 @@ function IntegrationNode({ data, selected, id }: NodeProps) {
     if (success === provider) {
       // Refresh status after successful connection
       fetchStatus();
+      // Auto-expand settings after successful connection for Google Sheets
+      if (nodeData.integrationType === 'google-sheets') {
+        setShowSettings(true);
+      }
       // Clean up URL
       window.history.replaceState({}, '', window.location.pathname);
     } else if (error) {
@@ -213,7 +235,7 @@ function IntegrationNode({ data, selected, id }: NodeProps) {
       // Clean up URL
       window.history.replaceState({}, '', window.location.pathname);
     }
-  }, [provider, id, nodeData.isConnected, updateNodeData]);
+  }, [provider, id, nodeData.isConnected, nodeData.integrationType, nodeData.spreadsheetId, updateNodeData]);
 
   const actionLabel = config.actions.find(a => a.value === nodeData.action)?.label || config.actions[0].label;
 
@@ -258,7 +280,10 @@ function IntegrationNode({ data, selected, id }: NodeProps) {
         updateNodeData(id, {
           isConnected: false,
           accountEmail: undefined,
+          spreadsheetId: undefined,
+          spreadsheetName: undefined,
         });
+        setSpreadsheets([]);
       } else {
         console.error('Failed to disconnect');
       }
@@ -268,6 +293,47 @@ function IntegrationNode({ data, selected, id }: NodeProps) {
       setIsDisconnecting(false);
     }
   }, [provider, id, updateNodeData]);
+
+  // Fetch spreadsheets for Google Sheets integration
+  const fetchSpreadsheets = useCallback(async () => {
+    if (!user || nodeData.integrationType !== 'google-sheets') return;
+    
+    setIsLoadingSpreadsheets(true);
+    setSpreadsheetsError(null);
+    
+    try {
+      const response = await fetch(`/api/integrations/google/spreadsheets?userId=${encodeURIComponent(user.id)}`);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch spreadsheets');
+      }
+      
+      const data = await response.json();
+      setSpreadsheets(data.spreadsheets || []);
+    } catch (error) {
+      console.error('Error fetching spreadsheets:', error);
+      setSpreadsheetsError(error instanceof Error ? error.message : 'Failed to load spreadsheets');
+    } finally {
+      setIsLoadingSpreadsheets(false);
+    }
+  }, [user, nodeData.integrationType]);
+
+  // Handle spreadsheet selection
+  const handleSelectSpreadsheet = useCallback((spreadsheet: Spreadsheet) => {
+    updateNodeData(id, {
+      spreadsheetId: spreadsheet.id,
+      spreadsheetName: spreadsheet.name,
+    });
+    setShowSpreadsheetDropdown(false);
+  }, [id, updateNodeData]);
+
+  // Fetch spreadsheets when dropdown opens
+  useEffect(() => {
+    if (showSpreadsheetDropdown && connectionStatus.connected && spreadsheets.length === 0) {
+      fetchSpreadsheets();
+    }
+  }, [showSpreadsheetDropdown, connectionStatus.connected, spreadsheets.length, fetchSpreadsheets]);
 
   const isConnected = connectionStatus.connected;
   const accountEmail = connectionStatus.providerEmail;
@@ -398,16 +464,102 @@ function IntegrationNode({ data, selected, id }: NodeProps) {
           {/* Integration-specific fields */}
           {nodeData.integrationType === 'google-sheets' && isConnected && (
             <div>
-              <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider mb-1 block">
-                Spreadsheet
-              </label>
-              <button
-                onClick={(e) => e.stopPropagation()}
-                className="w-full flex items-center justify-between bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-3 py-2 text-sm text-zinc-400 hover:border-zinc-600 transition-colors"
-              >
-                <span>{nodeData.spreadsheetName || 'Select spreadsheet...'}</span>
-                <ChevronDown className="w-4 h-4 text-zinc-500" />
-              </button>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
+                  Spreadsheet
+                </label>
+                {spreadsheets.length > 0 && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      fetchSpreadsheets();
+                    }}
+                    disabled={isLoadingSpreadsheets}
+                    className="text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors flex items-center gap-1"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${isLoadingSpreadsheets ? 'animate-spin' : ''}`} />
+                    Refresh
+                  </button>
+                )}
+              </div>
+              <div className="relative">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowSpreadsheetDropdown(!showSpreadsheetDropdown);
+                  }}
+                  className={`w-full flex items-center justify-between bg-zinc-800/50 border rounded-lg px-3 py-2 text-sm transition-colors ${
+                    nodeData.spreadsheetId 
+                      ? 'border-emerald-500/50 text-zinc-100' 
+                      : 'border-zinc-700/50 text-zinc-400 hover:border-zinc-600'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                    <span className="truncate">{nodeData.spreadsheetName || 'Select spreadsheet...'}</span>
+                  </div>
+                  <ChevronDown className={`w-4 h-4 text-zinc-500 flex-shrink-0 transition-transform ${showSpreadsheetDropdown ? 'rotate-180' : ''}`} />
+                </button>
+                
+                {showSpreadsheetDropdown && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl z-50 overflow-hidden max-h-60 overflow-y-auto">
+                    {isLoadingSpreadsheets ? (
+                      <div className="flex items-center justify-center gap-2 py-4 text-zinc-400">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span className="text-sm">Loading spreadsheets...</span>
+                      </div>
+                    ) : spreadsheetsError ? (
+                      <div className="p-3 text-center">
+                        <p className="text-sm text-red-400 mb-2">{spreadsheetsError}</p>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            fetchSpreadsheets();
+                          }}
+                          className="text-xs text-zinc-400 hover:text-white transition-colors"
+                        >
+                          Try again
+                        </button>
+                      </div>
+                    ) : spreadsheets.length === 0 ? (
+                      <div className="p-3 text-center text-sm text-zinc-400">
+                        No spreadsheets found in your Google Drive
+                      </div>
+                    ) : (
+                      spreadsheets.map((sheet) => (
+                        <button
+                          key={sheet.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSelectSpreadsheet(sheet);
+                          }}
+                          className={`w-full px-3 py-2.5 text-sm text-left hover:bg-zinc-700 transition-colors flex items-center gap-2 ${
+                            nodeData.spreadsheetId === sheet.id ? 'bg-zinc-700/50 text-white' : 'text-zinc-300'
+                          }`}
+                        >
+                          <FileSpreadsheet className={`w-4 h-4 flex-shrink-0 ${nodeData.spreadsheetId === sheet.id ? 'text-emerald-400' : 'text-zinc-500'}`} />
+                          <span className="truncate">{sheet.name}</span>
+                          {nodeData.spreadsheetId === sheet.id && (
+                            <span className="ml-auto text-emerald-400 text-xs">✓</span>
+                          )}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+              {nodeData.spreadsheetId && (
+                <a
+                  href={spreadsheets.find(s => s.id === nodeData.spreadsheetId)?.url || `https://docs.google.com/spreadsheets/d/${nodeData.spreadsheetId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex items-center gap-1 mt-2 text-[10px] text-zinc-500 hover:text-emerald-400 transition-colors"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  Open in Google Sheets
+                </a>
+              )}
             </div>
           )}
 
@@ -446,10 +598,20 @@ function IntegrationNode({ data, selected, id }: NodeProps) {
       {/* Quick Preview */}
       <div className="p-3">
         <div className="flex items-center gap-2 px-2.5 py-2 bg-zinc-800/50 border border-zinc-700/50 rounded-lg">
-          <Send className="w-3.5 h-3.5 text-zinc-500" />
-          <span className="text-xs text-zinc-400">
+          {nodeData.integrationType === 'google-sheets' && nodeData.spreadsheetName ? (
+            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-500" />
+          ) : (
+            <Send className="w-3.5 h-3.5 text-zinc-500" />
+          )}
+          <span className={`text-xs ${nodeData.spreadsheetName ? 'text-zinc-200' : 'text-zinc-400'}`}>
             {nodeData.integrationType === 'email' && 'Send to {{email}}'}
-            {nodeData.integrationType === 'google-sheets' && (nodeData.spreadsheetName || 'Connect to select sheet')}
+            {nodeData.integrationType === 'google-sheets' && (
+              nodeData.spreadsheetName 
+                ? `${nodeData.spreadsheetName}` 
+                : isConnected 
+                  ? 'Select a spreadsheet above' 
+                  : 'Connect to select sheet'
+            )}
             {nodeData.integrationType === 'slack' && (nodeData.channelName || 'Connect to select channel')}
             {nodeData.integrationType === 'notion' && (nodeData.pageName || 'Connect to select page')}
             {nodeData.integrationType === 'discord' && 'Channel: {{channel_id}}'}
