@@ -123,3 +123,4 @@ export const TEMPLATE_CATEGORIES = [
   { id: 'premium', name: 'Premium', icon: 'Crown' },
 ];
 
+

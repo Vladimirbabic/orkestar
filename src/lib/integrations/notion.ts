@@ -292,3 +292,4 @@ function extractPageTitle(page: Record<string, unknown>): string {
   return 'Untitled';
 }
 
+

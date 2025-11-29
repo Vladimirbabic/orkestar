@@ -316,3 +316,4 @@ INSERT INTO templates (name, description, category, tier, nodes, edges, is_featu
 )
 ON CONFLICT DO NOTHING;
 
+

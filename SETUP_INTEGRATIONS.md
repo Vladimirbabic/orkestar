@@ -163,3 +163,4 @@ When deploying to production:
 2. Set the production environment variables in your hosting platform
 3. Update `NEXT_PUBLIC_APP_URL` to your production URL
 
+

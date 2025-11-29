@@ -66,3 +66,4 @@ CREATE TRIGGER user_integrations_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_user_integrations_updated_at();
 
+

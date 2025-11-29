@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 export type IntegrationProvider = 'google' | 'slack' | 'notion';
 
@@ -31,13 +32,15 @@ const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
  */
 export async function getIntegrationStatus(
   userId: string,
-  provider: IntegrationProvider
+  provider: IntegrationProvider,
+  client?: SupabaseClient
 ): Promise<IntegrationStatus> {
-  if (!supabase) {
+  const db = client || supabase;
+  if (!db) {
     return { connected: false, provider };
   }
   
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('user_integrations')
     .select('*')
     .eq('user_id', userId)
@@ -64,7 +67,8 @@ export async function getIntegrationStatus(
  * Get all integration statuses for a user
  */
 export async function getAllIntegrationStatuses(
-  userId: string
+  userId: string,
+  client?: SupabaseClient
 ): Promise<Record<IntegrationProvider, IntegrationStatus>> {
   const statuses: Record<IntegrationProvider, IntegrationStatus> = {
     google: { connected: false, provider: 'google' },
@@ -72,11 +76,12 @@ export async function getAllIntegrationStatuses(
     notion: { connected: false, provider: 'notion' },
   };
 
-  if (!supabase) {
+  const db = client || supabase;
+  if (!db) {
     return statuses;
   }
   
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('user_integrations')
     .select('*')
     .eq('user_id', userId);
@@ -106,13 +111,15 @@ export async function getAllIntegrationStatuses(
  */
 export async function getAccessToken(
   userId: string,
-  provider: IntegrationProvider
+  provider: IntegrationProvider,
+  client?: SupabaseClient
 ): Promise<string | null> {
-  if (!supabase) {
+  const db = client || supabase;
+  if (!db) {
     return null;
   }
   
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('user_integrations')
     .select('*')
     .eq('user_id', userId)
@@ -130,7 +137,7 @@ export async function getAccessToken(
     
     // Refresh if token expires in less than 5 minutes
     if (expiresAt.getTime() - now.getTime() < 5 * 60 * 1000) {
-      const newToken = await refreshGoogleToken(userId, data.refresh_token);
+      const newToken = await refreshGoogleToken(userId, data.refresh_token, db);
       if (newToken) {
         return newToken;
       }
@@ -145,7 +152,8 @@ export async function getAccessToken(
  */
 async function refreshGoogleToken(
   userId: string,
-  refreshToken: string
+  refreshToken: string,
+  client?: SupabaseClient
 ): Promise<string | null> {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
@@ -155,7 +163,8 @@ async function refreshGoogleToken(
     return null;
   }
 
-  if (!supabase) {
+  const db = client || supabase;
+  if (!db) {
     return null;
   }
 
@@ -181,7 +190,7 @@ async function refreshGoogleToken(
     const data = await response.json();
     
     // Update the stored token
-    await supabase
+    await db
       .from('user_integrations')
       .update({
         access_token: data.access_token,
@@ -204,13 +213,15 @@ async function refreshGoogleToken(
  */
 export async function disconnectIntegration(
   userId: string,
-  provider: IntegrationProvider
+  provider: IntegrationProvider,
+  client?: SupabaseClient
 ): Promise<boolean> {
-  if (!supabase) {
+  const db = client || supabase;
+  if (!db) {
     return false;
   }
   
-  const { error } = await supabase
+  const { error } = await db
     .from('user_integrations')
     .delete()
     .eq('user_id', userId)
@@ -229,13 +240,15 @@ export async function disconnectIntegration(
  */
 export async function getIntegration(
   userId: string,
-  provider: IntegrationProvider
+  provider: IntegrationProvider,
+  client?: SupabaseClient
 ): Promise<Integration | null> {
-  if (!supabase) {
+  const db = client || supabase;
+  if (!db) {
     return null;
   }
   
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('user_integrations')
     .select('*')
     .eq('user_id', userId)

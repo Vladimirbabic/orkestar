@@ -1,17 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAccessToken } from '@/lib/integrationService';
+import { createSupabaseServerClient } from '@/lib/supabaseServer';
 
 const DRIVE_API_URL = 'https://www.googleapis.com/drive/v3/files';
 
 export async function GET(request: NextRequest) {
   try {
+    const supabase = await createSupabaseServerClient();
     const userId = request.nextUrl.searchParams.get('userId');
     
     if (!userId) {
       return NextResponse.json({ error: 'User ID required' }, { status: 400 });
     }
 
-    const accessToken = await getAccessToken(userId, 'google');
+    const accessToken = await getAccessToken(userId, 'google', supabase);
     
     if (!accessToken) {
       return NextResponse.json({ error: 'Google not connected' }, { status: 401 });

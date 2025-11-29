@@ -1,4 +1,5 @@
 import { getAccessToken } from '@/lib/integrationService';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 const SHEETS_API_URL = 'https://sheets.googleapis.com/v4/spreadsheets';
 const DRIVE_API_URL = 'https://www.googleapis.com/drive/v3/files';
@@ -22,8 +23,8 @@ export interface CellRange {
 /**
  * List all Google Sheets accessible by the user
  */
-export async function listSpreadsheets(userId: string): Promise<SpreadsheetInfo[]> {
-  const accessToken = await getAccessToken(userId, 'google');
+export async function listSpreadsheets(userId: string, client?: SupabaseClient): Promise<SpreadsheetInfo[]> {
+  const accessToken = await getAccessToken(userId, 'google', client);
   if (!accessToken) {
     throw new Error('Google not connected');
   }
@@ -52,8 +53,8 @@ export async function listSpreadsheets(userId: string): Promise<SpreadsheetInfo[
 /**
  * Get sheets within a spreadsheet
  */
-export async function getSheets(userId: string, spreadsheetId: string): Promise<SheetInfo[]> {
-  const accessToken = await getAccessToken(userId, 'google');
+export async function getSheets(userId: string, spreadsheetId: string, client?: SupabaseClient): Promise<SheetInfo[]> {
+  const accessToken = await getAccessToken(userId, 'google', client);
   if (!accessToken) {
     throw new Error('Google not connected');
   }
@@ -85,9 +86,10 @@ export async function getSheets(userId: string, spreadsheetId: string): Promise<
 export async function readRange(
   userId: string,
   spreadsheetId: string,
-  range: string
+  range: string,
+  client?: SupabaseClient
 ): Promise<CellRange> {
-  const accessToken = await getAccessToken(userId, 'google');
+  const accessToken = await getAccessToken(userId, 'google', client);
   if (!accessToken) {
     throw new Error('Google not connected');
   }
@@ -118,9 +120,10 @@ export async function writeRange(
   userId: string,
   spreadsheetId: string,
   range: string,
-  values: string[][]
+  values: string[][],
+  client?: SupabaseClient
 ): Promise<void> {
-  const accessToken = await getAccessToken(userId, 'google');
+  const accessToken = await getAccessToken(userId, 'google', client);
   if (!accessToken) {
     throw new Error('Google not connected');
   }
@@ -151,9 +154,10 @@ export async function appendRows(
   userId: string,
   spreadsheetId: string,
   range: string,
-  values: string[][]
+  values: string[][],
+  client?: SupabaseClient
 ): Promise<void> {
-  const accessToken = await getAccessToken(userId, 'google');
+  const accessToken = await getAccessToken(userId, 'google', client);
   if (!accessToken) {
     throw new Error('Google not connected');
   }
@@ -176,4 +180,5 @@ export async function appendRows(
     throw new Error('Failed to append rows');
   }
 }
+
 

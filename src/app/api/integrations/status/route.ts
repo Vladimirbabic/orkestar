@@ -9,6 +9,8 @@ import {
 // GET - Get all integration statuses for the current user
 export async function GET(request: NextRequest) {
   try {
+    const supabase = await createSupabaseServerClient();
+    
     // Try to get userId from query params first (for client-side calls)
     const userIdParam = request.nextUrl.searchParams.get('userId');
     
@@ -16,7 +18,6 @@ export async function GET(request: NextRequest) {
     
     // If no userId in params, try to get from session
     if (!userId) {
-      const supabase = await createSupabaseServerClient();
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       
       if (!authError && user) {
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const statuses = await getAllIntegrationStatuses(userId);
+    const statuses = await getAllIntegrationStatuses(userId, supabase);
     
     return NextResponse.json({ statuses });
   } catch (error) {
@@ -43,13 +44,13 @@ export async function GET(request: NextRequest) {
 // DELETE - Disconnect a specific integration
 export async function DELETE(request: NextRequest) {
   try {
+    const supabase = await createSupabaseServerClient();
     const { provider, userId: userIdBody } = await request.json();
     
     // Try to get userId from body first, then from session
     let userId: string | null = userIdBody;
     
     if (!userId) {
-      const supabase = await createSupabaseServerClient();
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       
       if (!authError && user) {
@@ -68,7 +69,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const success = await disconnectIntegration(userId, provider as IntegrationProvider);
+    const success = await disconnectIntegration(userId, provider as IntegrationProvider, supabase);
     
     if (!success) {
       return NextResponse.json(
