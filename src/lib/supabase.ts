@@ -1,4 +1,5 @@
-import { createClient, SupabaseClient, User } from '@supabase/supabase-js';
+import { createBrowserClient } from '@supabase/ssr';
+import { SupabaseClient, User } from '@supabase/supabase-js';
 
 // Environment variables must be set - no fallback credentials in code
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -8,8 +9,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('Supabase credentials not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables.');
 }
 
+// Use browser client from @supabase/ssr for proper cookie handling
 export const supabase: SupabaseClient | null = supabaseUrl && supabaseAnonKey 
-  ? createClient(supabaseUrl, supabaseAnonKey)
+  ? createBrowserClient(supabaseUrl, supabaseAnonKey)
   : null;
 
 // ============================================================================

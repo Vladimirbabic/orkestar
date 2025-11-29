@@ -7,16 +7,28 @@ import {
 } from '@/lib/integrationService';
 
 // GET - Get all integration statuses for the current user
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const supabase = await createSupabaseServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // Try to get userId from query params first (for client-side calls)
+    const userIdParam = request.nextUrl.searchParams.get('userId');
     
-    if (authError || !user) {
+    let userId: string | null = userIdParam;
+    
+    // If no userId in params, try to get from session
+    if (!userId) {
+      const supabase = await createSupabaseServerClient();
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (!authError && user) {
+        userId = user.id;
+      }
+    }
+    
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const statuses = await getAllIntegrationStatuses(user.id);
+    const statuses = await getAllIntegrationStatuses(userId);
     
     return NextResponse.json({ statuses });
   } catch (error) {
@@ -31,14 +43,23 @@ export async function GET() {
 // DELETE - Disconnect a specific integration
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = await createSupabaseServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { provider, userId: userIdBody } = await request.json();
     
-    if (authError || !user) {
+    // Try to get userId from body first, then from session
+    let userId: string | null = userIdBody;
+    
+    if (!userId) {
+      const supabase = await createSupabaseServerClient();
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (!authError && user) {
+        userId = user.id;
+      }
+    }
+    
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    const { provider } = await request.json();
     
     if (!provider || !['google', 'slack', 'notion'].includes(provider)) {
       return NextResponse.json(
@@ -47,7 +68,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const success = await disconnectIntegration(user.id, provider as IntegrationProvider);
+    const success = await disconnectIntegration(userId, provider as IntegrationProvider);
     
     if (!success) {
       return NextResponse.json(

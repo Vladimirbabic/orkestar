@@ -182,11 +182,11 @@ function IntegrationNode({ data, selected, id }: NodeProps) {
 
   // Fetch integration status on mount
   useEffect(() => {
-    if (!provider) return;
+    if (!provider || !user) return;
 
     const fetchStatus = async () => {
       try {
-        const response = await fetch('/api/integrations/status');
+        const response = await fetch(`/api/integrations/status?userId=${encodeURIComponent(user.id)}`);
         if (response.ok) {
           const data = await response.json();
           const status = data.statuses?.[provider];
@@ -235,7 +235,7 @@ function IntegrationNode({ data, selected, id }: NodeProps) {
       // Clean up URL
       window.history.replaceState({}, '', window.location.pathname);
     }
-  }, [provider, id, nodeData.isConnected, nodeData.integrationType, nodeData.spreadsheetId, updateNodeData]);
+  }, [provider, id, user, nodeData.isConnected, nodeData.integrationType, nodeData.spreadsheetId, updateNodeData]);
 
   const actionLabel = config.actions.find(a => a.value === nodeData.action)?.label || config.actions[0].label;
 
@@ -262,7 +262,7 @@ function IntegrationNode({ data, selected, id }: NodeProps) {
   const handleDisconnect = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation();
     
-    if (!provider) return;
+    if (!provider || !user) return;
     
     setIsDisconnecting(true);
     
@@ -272,7 +272,7 @@ function IntegrationNode({ data, selected, id }: NodeProps) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ provider }),
+        body: JSON.stringify({ provider, userId: user.id }),
       });
       
       if (response.ok) {
@@ -292,7 +292,7 @@ function IntegrationNode({ data, selected, id }: NodeProps) {
     } finally {
       setIsDisconnecting(false);
     }
-  }, [provider, id, updateNodeData]);
+  }, [provider, id, user, updateNodeData]);
 
   // Fetch spreadsheets for Google Sheets integration
   const fetchSpreadsheets = useCallback(async () => {
