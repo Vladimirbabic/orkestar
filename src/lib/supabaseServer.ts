@@ -1,4 +1,5 @@
 import { createServerClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 
 export async function createSupabaseServerClient() {
@@ -27,6 +28,26 @@ export async function createSupabaseServerClient() {
           // user sessions.
         }
       },
+    },
+  });
+}
+
+/**
+ * Create a Supabase admin client that bypasses RLS
+ * Use this for server-side operations that need to write data without user session
+ */
+export function createSupabaseAdminClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new Error('Supabase admin credentials not configured. Set SUPABASE_SERVICE_ROLE_KEY.');
+  }
+
+  return createClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
     },
   });
 }
