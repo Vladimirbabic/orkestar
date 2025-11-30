@@ -220,3 +220,5 @@ export function VariablesPanel({ variables, onChange, onClose }: VariablesPanelP
 export default VariablesPanel;
 
 
+
+
