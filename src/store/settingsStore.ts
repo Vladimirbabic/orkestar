@@ -10,6 +10,7 @@ export interface APIKeys {
   elevenlabs?: string;
   custom?: string;
   supadata?: string;
+  autosend?: string;
 }
 
 interface SettingsState {

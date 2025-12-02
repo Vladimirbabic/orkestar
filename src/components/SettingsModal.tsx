@@ -20,6 +20,7 @@ import {
   Banana,
   Volume2,
   Database,
+  Mail,
 } from 'lucide-react';
 
 interface ModelConfig {
@@ -86,6 +87,15 @@ const modelConfigs: ModelConfig[] = [
     iconColor: 'text-green-500',
     docsUrl: 'https://dash.supadata.ai',
     placeholder: 'sd_...',
+  },
+  {
+    id: 'autosend',
+    label: 'AutoSend',
+    description: 'Email sending API',
+    icon: <Mail className="w-4 h-4" />,
+    iconColor: 'text-rose-500',
+    docsUrl: 'https://docs.autosend.com/',
+    placeholder: 'AS_...',
   },
 ];
 

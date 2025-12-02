@@ -45,12 +45,19 @@ export interface IntegrationNodeData {
   channelName?: string;
   pageId?: string;
   pageName?: string;
+  // Email (AutoSend) specific fields
+  emailTo?: string;
+  emailFrom?: string;
+  emailFromName?: string;
+  emailSubject?: string;
+  emailBody?: string;
+  emailReplyTo?: string;
   [key: string]: unknown;
 }
 
 // Map integration type to OAuth provider
 const INTEGRATION_TO_PROVIDER: Record<IntegrationType, string | null> = {
-  'email': null,
+  'email': null, // Uses API key from settings, not OAuth
   'google-sheets': 'google',
   'slack': 'slack',
   'notion': 'notion',
@@ -242,6 +249,12 @@ function IntegrationNode({ data, selected, id }: NodeProps) {
   const handleConnect = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     
+    // For email, just expand settings panel (uses API key from settings, not OAuth)
+    if (nodeData.integrationType === 'email') {
+      setShowSettings(true);
+      return;
+    }
+    
     if (!provider) {
       alert(`${config.name} integration is coming soon!`);
       return;
@@ -257,7 +270,7 @@ function IntegrationNode({ data, selected, id }: NodeProps) {
     // Open OAuth flow - pass user ID via query param since server can't access localStorage session
     const authUrl = `/api/integrations/${provider}/authorize?userId=${encodeURIComponent(user.id)}`;
     window.location.href = authUrl;
-  }, [provider, config.name, user]);
+  }, [provider, config.name, user, nodeData.integrationType]);
 
   const handleDisconnect = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -379,7 +392,20 @@ function IntegrationNode({ data, selected, id }: NodeProps) {
 
       {/* Connection Status & Connect Button */}
       <div className="p-3 border-b border-zinc-800/50">
-        {isConnected ? (
+        {/* Email uses API key from settings, not OAuth */}
+        {nodeData.integrationType === 'email' ? (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowSettings(!showSettings);
+            }}
+            className={`w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-white transition-all ${config.connectColor}`}
+          >
+            <Icon className="w-4 h-4" />
+            {showSettings ? 'Hide Settings' : 'Configure Email'}
+            <Settings2 className="w-3 h-3 opacity-70" />
+          </button>
+        ) : isConnected ? (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -592,6 +618,99 @@ function IntegrationNode({ data, selected, id }: NodeProps) {
               </button>
             </div>
           )}
+
+          {/* Email (AutoSend) Configuration */}
+          {nodeData.integrationType === 'email' && (
+            <div className="space-y-3">
+              <div>
+                <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider mb-1 block">
+                  To (Recipient)
+                </label>
+                <input
+                  type="text"
+                  value={nodeData.emailTo || ''}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    updateNodeData(id, { emailTo: e.target.value });
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  placeholder="{{email}} or user@example.com"
+                  className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-rose-500/50 transition-colors"
+                />
+              </div>
+              
+              <div>
+                <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider mb-1 block">
+                  From (Sender Email)
+                </label>
+                <input
+                  type="text"
+                  value={nodeData.emailFrom || ''}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    updateNodeData(id, { emailFrom: e.target.value });
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  placeholder="noreply@yourdomain.com"
+                  className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-rose-500/50 transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider mb-1 block">
+                  From Name
+                </label>
+                <input
+                  type="text"
+                  value={nodeData.emailFromName || ''}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    updateNodeData(id, { emailFromName: e.target.value });
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  placeholder="Your Company"
+                  className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-rose-500/50 transition-colors"
+                />
+              </div>
+              
+              <div>
+                <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider mb-1 block">
+                  Subject
+                </label>
+                <input
+                  type="text"
+                  value={nodeData.emailSubject || ''}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    updateNodeData(id, { emailSubject: e.target.value });
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  placeholder="Welcome to {{company}}!"
+                  className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-rose-500/50 transition-colors"
+                />
+              </div>
+              
+              <div>
+                <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider mb-1 block">
+                  Body (HTML or Text)
+                </label>
+                <textarea
+                  value={nodeData.emailBody || ''}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    updateNodeData(id, { emailBody: e.target.value });
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  placeholder="<h1>Hello {{name}}</h1><p>{{input}}</p>"
+                  rows={4}
+                  className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-rose-500/50 transition-colors resize-none"
+                />
+                <p className="text-[10px] text-zinc-600 mt-1">
+                  Use {"{{input}}"} to include content from previous nodes
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -686,8 +805,12 @@ function IntegrationNode({ data, selected, id }: NodeProps) {
             ) : (
               <Send className="w-3.5 h-3.5 text-zinc-500" />
             )}
-            <span className={`text-xs ${nodeData.spreadsheetName ? 'text-zinc-200' : 'text-zinc-400'}`}>
-              {nodeData.integrationType === 'email' && 'Send to {{email}}'}
+            <span className={`text-xs ${nodeData.spreadsheetName || nodeData.emailTo ? 'text-zinc-200' : 'text-zinc-400'}`}>
+              {nodeData.integrationType === 'email' && (
+                nodeData.emailTo 
+                  ? `To: ${nodeData.emailTo.length > 25 ? nodeData.emailTo.slice(0, 25) + '...' : nodeData.emailTo}`
+                  : 'Configure email settings...'
+              )}
               {nodeData.integrationType === 'google-sheets' && 'Connect to select sheet'}
               {nodeData.integrationType === 'slack' && (nodeData.channelName || 'Connect to select channel')}
               {nodeData.integrationType === 'notion' && (nodeData.pageName || 'Connect to select page')}

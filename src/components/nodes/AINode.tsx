@@ -307,8 +307,8 @@ const AINode = ({ data, selected, id, ...props }: NodeProps) => {
         </div>
       )}
 
-      {/* Image Upload Section - Hidden for ElevenLabs and Stable Diffusion */}
-      {nodeData.model !== 'elevenlabs' && nodeData.model !== 'stable-diffusion' && (
+      {/* Image Upload Section - Hidden for ElevenLabs, Stable Diffusion, and Supadata */}
+      {nodeData.model !== 'elevenlabs' && nodeData.model !== 'stable-diffusion' && nodeData.model !== 'supadata' && (
         <div className="px-3 pb-2">
           <input
             ref={fileInputRef}

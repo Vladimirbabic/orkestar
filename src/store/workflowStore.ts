@@ -11,7 +11,7 @@ import {
 } from '@xyflow/react';
 import { getDefaultSubModel, getSubModelLabel } from '@/lib/modelConfig';
 
-export type AIModel = 'openai' | 'gemini' | 'stable-diffusion' | 'elevenlabs' | 'custom' | 'supadata';
+export type AIModel = 'openai' | 'gemini' | 'stable-diffusion' | 'elevenlabs' | 'custom' | 'supadata' | 'autosend';
 export type TriggerType = 'webhook';
 
 // Sub-models for each provider

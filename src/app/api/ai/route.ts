@@ -730,6 +730,13 @@ async function callElevenLabs(
 // Supadata API
 // ============================================================================
 
+interface TranscriptSegment {
+  text: string;
+  offset: number;
+  duration: number;
+  lang?: string;
+}
+
 async function callSupadata(
   prompt: string,
   apiKey: string,
@@ -745,14 +752,40 @@ async function callSupadata(
     throw new Error('Please provide a valid URL in the prompt (e.g., https://example.com)');
   }
   
-  const endpointMap: Record<string, string> = {
-    'transcript': `${baseUrl}/transcript?url=${encodeURIComponent(targetUrl)}`,
-    'metadata': `${baseUrl}/metadata?url=${encodeURIComponent(targetUrl)}`,
-    'web-reader': `${baseUrl}/web/scrape?url=${encodeURIComponent(targetUrl)}`,
-    'youtube-metadata': `${baseUrl}/youtube/video?url=${encodeURIComponent(targetUrl)}`,
+  // Extract video ID from YouTube URL for metadata endpoint
+  const extractVideoId = (url: string): string | null => {
+    const patterns = [
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
+      /youtube\.com\/shorts\/([^&\n?#]+)/,
+    ];
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match) return match[1];
+    }
+    return null;
   };
   
-  const url = endpointMap[subModel] || endpointMap['web-reader'];
+  let url: string;
+  
+  switch (subModel) {
+    case 'transcript':
+      // Use mode=auto to get full transcripts (tries native first, then AI generation)
+      url = `${baseUrl}/youtube/transcript?url=${encodeURIComponent(targetUrl)}&mode=auto`;
+      break;
+    case 'youtube-metadata': {
+      // YouTube video endpoint accepts video ID or URL
+      const videoId = extractVideoId(targetUrl) || targetUrl;
+      url = `${baseUrl}/youtube/video?id=${encodeURIComponent(videoId)}`;
+      break;
+    }
+    case 'metadata':
+      url = `${baseUrl}/metadata?url=${encodeURIComponent(targetUrl)}`;
+      break;
+    case 'web-reader':
+    default:
+      url = `${baseUrl}/web/scrape?url=${encodeURIComponent(targetUrl)}`;
+      break;
+  }
   
   const response = await fetch(url, {
     method: 'GET',
@@ -773,12 +806,80 @@ async function callSupadata(
   
   const data = await response.json();
   
-  const formatters: Record<string, (d: Record<string, unknown>) => string> = {
-    'transcript': (d) => (d.transcript as string) || JSON.stringify(d, null, 2),
-    'metadata': (d) => JSON.stringify(d, null, 2),
-    'web-reader': (d) => (d.content as string) || (d.text as string) || JSON.stringify(d, null, 2),
-    'youtube-metadata': (d) => JSON.stringify(d, null, 2),
-  };
-  
-  return (formatters[subModel] || formatters['web-reader'])(data);
+  // Format response based on subModel
+  switch (subModel) {
+    case 'transcript': {
+      // Handle transcript response - content is an array of segments
+      if (data.content && Array.isArray(data.content)) {
+        const segments = data.content as TranscriptSegment[];
+        // Combine all segment texts into a full transcript
+        const fullTranscript = segments.map((seg) => seg.text).join(' ');
+        
+        // Also include metadata if available
+        const metadata: string[] = [];
+        if (data.lang) metadata.push(`Language: ${data.lang}`);
+        if (data.availableLangs && Array.isArray(data.availableLangs)) {
+          metadata.push(`Available languages: ${data.availableLangs.join(', ')}`);
+        }
+        
+        const metaStr = metadata.length > 0 ? `[${metadata.join(' | ')}]\n\n` : '';
+        return metaStr + fullTranscript;
+      }
+      // Fallback to raw response
+      return typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    }
+    
+    case 'youtube-metadata': {
+      // Extract video ID for constructing URLs
+      const videoId = extractVideoId(targetUrl) || data.id;
+      
+      // Format YouTube metadata in a readable way
+      const meta: string[] = [];
+      
+      // Always include Video URL at the top
+      if (videoId) {
+        meta.push(`Video URL: https://www.youtube.com/watch?v=${videoId}`);
+      } else if (targetUrl.includes('youtube.com') || targetUrl.includes('youtu.be')) {
+        meta.push(`Video URL: ${targetUrl}`);
+      }
+      
+      if (data.title) meta.push(`Title: ${data.title}`);
+      if (data.channelName) meta.push(`Channel: ${data.channelName}`);
+      if (data.channelId) meta.push(`Channel URL: https://www.youtube.com/channel/${data.channelId}`);
+      if (data.description) meta.push(`Description: ${data.description}`);
+      if (data.duration) meta.push(`Duration: ${data.duration} seconds`);
+      if (data.viewCount !== undefined) meta.push(`Views: ${data.viewCount.toLocaleString()}`);
+      if (data.likeCount !== undefined) meta.push(`Likes: ${data.likeCount.toLocaleString()}`);
+      if (data.uploadDate) meta.push(`Upload Date: ${data.uploadDate}`);
+      if (data.tags && Array.isArray(data.tags) && data.tags.length > 0) meta.push(`Tags: ${data.tags.join(', ')}`);
+      
+      // Include thumbnail - prefer API response, fallback to constructed URL
+      if (data.thumbnails && Array.isArray(data.thumbnails) && data.thumbnails.length > 0) {
+        const bestThumb = data.thumbnails[data.thumbnails.length - 1];
+        if (bestThumb.url) meta.push(`Thumbnail: ${bestThumb.url}`);
+      } else if (videoId) {
+        // Construct thumbnail URL if not in response
+        meta.push(`Thumbnail: https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`);
+        meta.push(`Thumbnail (HQ): https://img.youtube.com/vi/${videoId}/hqdefault.jpg`);
+      }
+      
+      if (data.transcriptLanguages && Array.isArray(data.transcriptLanguages) && data.transcriptLanguages.length > 0) {
+        meta.push(`Transcript Languages: ${data.transcriptLanguages.join(', ')}`);
+      }
+      
+      // Include embed URL for easy embedding
+      if (videoId) {
+        meta.push(`Embed URL: https://www.youtube.com/embed/${videoId}`);
+      }
+      
+      return meta.length > 0 ? meta.join('\n\n') : JSON.stringify(data, null, 2);
+    }
+    
+    case 'metadata':
+      return JSON.stringify(data, null, 2);
+    
+    case 'web-reader':
+    default:
+      return (data.content as string) || (data.text as string) || JSON.stringify(data, null, 2);
+  }
 }

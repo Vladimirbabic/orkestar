@@ -2,6 +2,8 @@ import { Node, Edge } from '@xyflow/react';
 import { NodeData, ResultNodeData, AIModel } from '@/store/workflowStore';
 import { runAIModel } from './aiService';
 import { APIKeys } from '@/store/settingsStore';
+import { sendEmail, buildEmailHtml } from './integrations/autosend';
+import { IntegrationNodeData } from '@/components/nodes/IntegrationNode';
 
 // ============================================================================
 // Type Definitions
@@ -15,7 +17,7 @@ export interface ExecutionContext {
   onNodeError: (nodeId: string, error: string) => void;
 }
 
-type WorkflowNode = Node<NodeData | ResultNodeData>;
+type WorkflowNode = Node<NodeData | ResultNodeData | IntegrationNodeData>;
 
 // ============================================================================
 // Core Execution Logic
@@ -39,6 +41,12 @@ async function executeNodeCore(
     context.nodeOutputs.set(node.id, result);
     context.onNodeComplete(node.id, result);
     return result;
+  }
+
+  // Handle Integration nodes (e.g., Email)
+  if (node.type === 'integrationNode') {
+    const integrationData = node.data as IntegrationNodeData;
+    return executeIntegrationNode(node.id, integrationData, combinedInput, context);
   }
   
   // Handle AI nodes
@@ -118,6 +126,90 @@ function buildPrompt(data: NodeData, combinedInput: string): string {
   }
   
   return prompt;
+}
+
+/**
+ * Replace template variables in a string
+ */
+function replaceTemplateVariables(template: string, input: string): string {
+  if (!template) return '';
+  return template.replace(/\{\{input\}\}/g, input);
+}
+
+/**
+ * Executes an integration node (e.g., Email via AutoSend)
+ */
+async function executeIntegrationNode(
+  nodeId: string,
+  data: IntegrationNodeData,
+  combinedInput: string,
+  context: ExecutionContext
+): Promise<string | null> {
+  context.onNodeStart(nodeId);
+
+  // Handle Email integration
+  if (data.integrationType === 'email') {
+    const apiKey = context.apiKeys.autosend;
+    
+    if (!apiKey) {
+      context.onNodeError(nodeId, 'AutoSend API key not configured. Please add it in Settings.');
+      return null;
+    }
+
+    // Validate required fields
+    if (!data.emailTo) {
+      context.onNodeError(nodeId, 'Email recipient (To) is required');
+      return null;
+    }
+
+    if (!data.emailFrom) {
+      context.onNodeError(nodeId, 'Sender email (From) is required');
+      return null;
+    }
+
+    if (!data.emailSubject) {
+      context.onNodeError(nodeId, 'Email subject is required');
+      return null;
+    }
+
+    try {
+      // Replace template variables with input from previous nodes
+      const to = replaceTemplateVariables(data.emailTo, combinedInput);
+      const subject = replaceTemplateVariables(data.emailSubject, combinedInput);
+      const body = replaceTemplateVariables(data.emailBody || '', combinedInput);
+
+      // Send the email via AutoSend
+      const response = await sendEmail(apiKey, {
+        to: { email: to },
+        from: {
+          email: data.emailFrom,
+          name: data.emailFromName || undefined,
+        },
+        subject: subject,
+        html: body || `<p>${combinedInput}</p>`,
+      });
+
+      if (response.success) {
+        const result = `Email sent successfully to ${to}${response.messageId ? ` (ID: ${response.messageId})` : ''}`;
+        context.nodeOutputs.set(nodeId, result);
+        context.onNodeComplete(nodeId, result);
+        return result;
+      } else {
+        context.onNodeError(nodeId, response.error || 'Failed to send email');
+        return null;
+      }
+    } catch (error) {
+      context.onNodeError(
+        nodeId,
+        error instanceof Error ? error.message : 'Failed to send email'
+      );
+      return null;
+    }
+  }
+
+  // Handle other integration types (placeholder for future integrations)
+  context.onNodeError(nodeId, `Integration type '${data.integrationType}' is not yet supported for execution`);
+  return null;
 }
 
 // ============================================================================
